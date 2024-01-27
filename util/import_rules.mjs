@@ -54,8 +54,8 @@ for (const pokemon of pokemon_to_add) {
     console.log("Adding", name);
     const { error } = await supabase
         .from("point_rule")
-        .upsert([{ point_rule_set: 4, value: points, pokemon_id: id }], {
-            onConflict: "point_rule_set,pokemon_id",
+        .upsert([{ point_ruleset: 4, value: points, pokemon_id: id }], {
+            onConflict: "point_ruleset,pokemon_id",
         })
         .select();
     if (error) console.log(name, error);

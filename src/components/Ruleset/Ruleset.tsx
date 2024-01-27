@@ -4,7 +4,6 @@ import {
     useState,
     useEffect,
     useMemo,
-    memo,
     Dispatch,
     SetStateAction,
     ReactNode,
@@ -33,8 +32,9 @@ import {
     Checkbox,
 } from "@mantine/core";
 import Fuse from "fuse.js";
-import { useDebouncedState, useWindowScroll } from "@mantine/hooks";
 import { Loading } from "../Loading/Loading";
+import { useDebouncedState, useWindowScroll } from "@mantine/hooks";
+import { pointRuleTable, pointRulesetTable } from "@/util/DatabaseTables";
 
 type Pokemon = {
     data: Species;
@@ -230,7 +230,7 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
 
     const fetchName = async (ruleset: number | string) => {
         let { data, error } = await supabase
-            .from("point_rule_set")
+            .from(pointRulesetTable)
             .select("name")
             .eq("id", ruleset)
             .limit(1);
@@ -241,9 +241,9 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
 
     const fetchRules = async (ruleset: number | string) => {
         let { data, error } = await supabase
-            .from("point_rule")
+            .from(pointRuleTable)
             .select("value, pokemon_id")
-            .eq("point_rule_set", ruleset);
+            .eq("point_ruleset", ruleset);
         if (error) return console.error(error);
         if (!data) return console.log("No data received!");
 

@@ -12,13 +12,14 @@ import {
     Anchor,
 } from "@mantine/core";
 import { Link } from "react-router-dom";
+import { pointRulesetTable } from "@/util/DatabaseTables";
 
 export const RulesetListView = () => {
     const [rulesets, setRulesets] = useState<[string, string][]>([]);
 
     const fetchRulesets = async () => {
         let { data, error } = await supabase
-            .from("point_rule_set")
+            .from(pointRulesetTable)
             .select("id, name");
         if (error) return console.error(error);
         if (!data) return console.log("No data received!");
