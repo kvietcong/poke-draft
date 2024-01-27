@@ -7,6 +7,7 @@ import {
     memo,
     Dispatch,
     SetStateAction,
+    ReactNode,
 } from "react";
 import { useParams } from "react-router-dom";
 import { colorByType, getTypeColor } from "../../util/PokemonColors";
@@ -41,9 +42,27 @@ type Pokemon = {
 };
 type PointRule = [value: string, pokemonData: Pokemon[]];
 type CardOnClick = (pokemon: Pokemon) => void;
-
 const defaultCardOnClick = (pokemon: Pokemon) =>
     window.open(`https://dex.pokemonshowdown.com/pokemon/${pokemon.data.id}`);
+
+const TypeToolTip = ({
+    children,
+    types,
+}: {
+    children: ReactNode;
+    types: string[];
+}) => (
+    <TooltipFloating
+        label={types.map((type) => (
+            <Badge key={type} m={1} w={100} color={getTypeColor(type)}>
+                {type}
+            </Badge>
+        ))}
+    >
+        {children}
+    </TooltipFloating>
+);
+
 const PokemonCard = ({
     pokemon,
     onClick,
@@ -51,21 +70,16 @@ const PokemonCard = ({
     pokemon: Pokemon;
     onClick?: CardOnClick;
 }) => {
+    const onCardClick = onClick || defaultCardOnClick;
     return (
-        <TooltipFloating
-            label={pokemon.data.types.map((type) => (
-                <Badge key={type} m={1} w={100} color={getTypeColor(type)}>
-                    {type}
-                </Badge>
-            ))}
-        >
+        <TypeToolTip types={pokemon.data.types}>
             <Card
                 radius="lg"
                 withBorder
                 w={150}
                 mih={150}
                 padding={20}
-                onClick={(_) => (onClick || defaultCardOnClick)(pokemon)}
+                onClick={(_) => onCardClick(pokemon)}
                 className={classes.hoverPointer}
             >
                 <Image
@@ -81,61 +95,85 @@ const PokemonCard = ({
                 />
                 <Text ta="center">{pokemon.data.name}</Text>
             </Card>
-        </TooltipFloating>
+        </TypeToolTip>
     );
 };
 
-export const RulesetAccordion = memo(
-    ({
-        rules,
-        open,
-        setOpen,
-    }: {
-        rules: PointRule[];
-        open?: string[];
-        setOpen?: Dispatch<SetStateAction<string[]>>;
-    }) => {
-        return (
-            <>
-                <Accordion
-                    multiple={true}
-                    variant="separated"
-                    transitionDuration={500}
-                    value={open}
-                    onChange={setOpen}
-                >
-                    {rules.map(([value, pokemonData]) => (
-                        <Accordion.Item key={value} value={value}>
-                            <Accordion.Control>
-                                {value === "0" ? "Banned" : `${value} Points`}
-                            </Accordion.Control>
-                            <Accordion.Panel>
+const PokemonPill = ({
+    pokemon,
+    onClick,
+}: {
+    pokemon: Pokemon;
+    onClick?: CardOnClick;
+}) => {
+    const onCardClick = onClick || defaultCardOnClick;
+    return (
+        <TypeToolTip types={pokemon.data.types}>
+            <Badge
+                className={classes.hoverPointer}
+                onClick={(_) => onCardClick(pokemon)}
+            >
+                {pokemon.data.name}
+            </Badge>
+        </TypeToolTip>
+    );
+};
+
+export const RulesetAccordion = ({
+    open,
+    rules,
+    setOpen,
+    isMinimal,
+}: {
+    open?: string[];
+    rules: PointRule[];
+    setOpen?: Dispatch<SetStateAction<string[]>>;
+    isMinimal?: boolean;
+}) => {
+    const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
+    return (
+        <>
+            <Accordion
+                value={open}
+                multiple={true}
+                onChange={setOpen}
+                variant={isMinimal ? "filled" : "separated"}
+            >
+                {rules.map(([value, pokemonData]) => (
+                    <Accordion.Item key={value} value={value}>
+                        <Accordion.Control>
+                            {value === "0" ? "Banned" : `${value} Points`}
+                        </Accordion.Control>
+                        <Accordion.Panel>
+                            {open && open.includes(value) ? (
                                 <Group justify="center">
                                     {pokemonData.map((pokemon) => (
-                                        <PokemonCard
+                                        <PokemonDisplay
                                             key={pokemon.data.id}
                                             pokemon={pokemon}
                                         />
                                     ))}
                                 </Group>
-                            </Accordion.Panel>
-                        </Accordion.Item>
-                    ))}
-                </Accordion>
-            </>
-        );
-    }
-);
+                            ) : null}
+                        </Accordion.Panel>
+                    </Accordion.Item>
+                ))}
+            </Accordion>
+        </>
+    );
+};
 
 export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
     const [rules, setRules] = useState<PointRule[]>([]);
     const [rulesetName, setRulesetName] = useState<string>("");
 
     const [name, setName] = useDebouncedState("", 300);
-    const [fuzzyLevel, setFuzzyLevel] = useDebouncedState(0.3, 300);
+    const [fuzzyLevel, setFuzzyLevel] = useState(0.3);
 
     const [types, setTypes] = useState<string[]>([]);
-    const [willAndTypes, setWillAndTypes] = useState(true);
+    const [willMatchAllTypes, setWillMatchAllTypes] = useState(true);
+
+    const [isMinimal, setIsMinimal] = useState(false);
 
     const [scroll, scrollTo] = useWindowScroll();
     const [open, setOpen] = useState<string[]>([]);
@@ -171,7 +209,7 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
         }
         if (types.length) {
             const typePredicate = (pokemon: Pokemon) => {
-                const fn = willAndTypes ? types.every : types.some;
+                const fn = willMatchAllTypes ? types.every : types.some;
                 return fn.bind(types)((type: string) =>
                     pokemon.data.types
                         .map((type) => type.toLowerCase())
@@ -188,7 +226,7 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
             return acc;
         }, []);
         return result;
-    }, [name, rules, types, willAndTypes, nameFuzzySearcher]);
+    }, [name, rules, types, willMatchAllTypes, nameFuzzySearcher]);
 
     const fetchName = async (ruleset: number | string) => {
         let { data, error } = await supabase
@@ -265,20 +303,28 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                         {rulesetName}
                     </Text>
                 </Title>
-                <Input
-                    defaultValue={name}
-                    placeholder="Search for Pokemon"
-                    onChange={(e) => setName(e.target.value)}
-                />
                 <Group>
-                    Name Fuzzing (0 perfect match, 1 super fuzz):{" "}
+                    <Input
+                        defaultValue={name}
+                        style={{ flexGrow: 1 }}
+                        placeholder="Search for Pokemon"
+                        onChange={(e) => setName(e.target.value)}
+                    />
+                    <Checkbox
+                        checked={isMinimal}
+                        onChange={(e) => setIsMinimal(e.currentTarget.checked)}
+                        label="Minimal View?"
+                    />
+                </Group>
+                <Group>
+                    <Text>Name Fuzzing Strength: </Text>
                     <Slider
                         min={0}
                         max={1}
                         step={0.05}
-                        w="100%"
+                        style={{ flexGrow: 1 }}
                         defaultValue={fuzzyLevel}
-                        onChange={setFuzzyLevel}
+                        onChangeEnd={setFuzzyLevel}
                     />
                 </Group>
                 <Group justify="center">
@@ -289,9 +335,9 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                             </Chip>
                         ))}
                         <Checkbox
-                            checked={willAndTypes}
+                            checked={willMatchAllTypes}
                             onChange={(e) =>
-                                setWillAndTypes(e.currentTarget.checked)
+                                setWillMatchAllTypes(e.currentTarget.checked)
                             }
                             label="Match All Types"
                         />
@@ -300,6 +346,7 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                 <RulesetAccordion
                     open={open}
                     setOpen={setOpen}
+                    isMinimal={isMinimal}
                     rules={filteredRules}
                 />
                 <Group
