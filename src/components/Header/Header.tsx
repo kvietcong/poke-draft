@@ -3,11 +3,14 @@ import { Container, Group, Text, Anchor } from "@mantine/core";
 import classes from "./Header.module.css";
 import { Link, useLocation } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
+import supabase from "@/supabase";
+import { profileTable } from "@/util/DatabaseTables";
 
 export const Header = () => {
     const { session } = useContext(AppContext);
     const { pathname } = useLocation();
     const [links, setLinks] = useState<{ link: string; label: string }[]>([]);
+    const [displayName, setDisplayName] = useState<string | null>(null);
 
     useEffect(() => {
         const newLinks = [
@@ -17,11 +20,26 @@ export const Header = () => {
             {
                 link: "/account",
                 label: session
-                    ? `${session.user.user_metadata.name}` || "Me"
+                    ? `${displayName ?? session.user.user_metadata.name ?? "Me"}`
                     : "Sign In",
             },
         ];
         setLinks(newLinks);
+    }, [session, displayName]);
+
+    useEffect(() => {
+        if (!session) return;
+        const fetchName = async () => {
+            const { data, error } = await supabase
+                .from(profileTable)
+                .select("display_name")
+                .eq("id", session.user.id)
+                .single();
+            if (error) return console.error(error);
+            if (!data) return console.log("No data received!");
+            setDisplayName(data.display_name);
+        };
+        fetchName();
     }, [session]);
 
     const items = links.map((link) => (
