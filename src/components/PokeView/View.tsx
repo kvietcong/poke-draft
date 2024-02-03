@@ -13,6 +13,7 @@ import {
     Grid,
     Progress,
     Tooltip,
+    FloatingPosition,
 } from "@mantine/core";
 import getGenerationName from "@/util/GenerationName";
 import { Pokemon } from "@/types";
@@ -23,7 +24,7 @@ const defaultCardOnClick = (pokemon: Pokemon, generation: number) =>
         `https://www.smogon.com/dex/${getGenerationName(generation)}/pokemon/${pokemon.data.name}/`
     );
 
-export const HoverTooltipLabel = ({ pokemon }: { pokemon: Pokemon }) => {
+export const BasicStatDisplay = ({ pokemon }: { pokemon: Pokemon }) => {
     const typeBadges = pokemon.data.types.map((type) => (
         <Badge key={type} color={getTypeColor(type)}>
             {type}
@@ -44,15 +45,18 @@ export const HoverTooltipLabel = ({ pokemon }: { pokemon: Pokemon }) => {
 export const PokemonTooltip = ({
     children,
     pokemon,
+    tooltipPosition,
 }: {
     children: ReactNode;
     pokemon: Pokemon;
+    tooltipPosition?: FloatingPosition;
 }) => (
     <Tooltip
-        label={<HoverTooltipLabel pokemon={pokemon} />}
+        label={<BasicStatDisplay pokemon={pokemon} />}
         transitionProps={{ transition: "pop", duration: 360 }}
+        position={tooltipPosition}
     >
-        {children}
+        <div>{children}</div>
     </Tooltip>
 );
 
@@ -67,35 +71,33 @@ export const PokemonCard = ({
 }) => {
     const onCardClick = onClick || defaultCardOnClick;
     return (
-        <PokemonTooltip pokemon={pokemon}>
-            <Card
-                radius="lg"
-                withBorder
-                w={150}
-                mih={150}
-                padding={20}
-                onClick={(_) => onCardClick(pokemon, generation)}
-                className={classes.hoverPointer}
-            >
-                <Image
-                    src={pokemon.sprite.url}
-                    style={{
-                        imageRendering: pokemon.sprite.pixelated
-                            ? "pixelated"
-                            : "auto",
-                    }}
-                    w="100%"
-                    mah={100}
-                    fit="contain"
-                />
-                <Text ta="center">{pokemon.data.name}</Text>
-                {pokemon.data.types.map((type) => (
-                    <Badge key={type} m={1} w={100} color={getTypeColor(type)}>
-                        {type}
-                    </Badge>
-                ))}
-            </Card>
-        </PokemonTooltip>
+        <Card
+            radius="lg"
+            withBorder
+            w={150}
+            mih={150}
+            padding={20}
+            onClick={(_) => onCardClick(pokemon, generation)}
+            className={classes.hoverPointer}
+        >
+            <Image
+                src={pokemon.sprite.url}
+                style={{
+                    imageRendering: pokemon.sprite.pixelated
+                        ? "pixelated"
+                        : "auto",
+                }}
+                w="100%"
+                mah={100}
+                fit="contain"
+            />
+            <Text ta="center">{pokemon.data.name}</Text>
+            {pokemon.data.types.map((type) => (
+                <Badge key={type} m={1} w={100} color={getTypeColor(type)}>
+                    {type}
+                </Badge>
+            ))}
+        </Card>
     );
 };
 
@@ -155,18 +157,16 @@ export const PokemonPill = ({
         pokemon.data.types[1] ?? pokemon.data.types[0]
     );
     return (
-        <PokemonTooltip pokemon={pokemon}>
-            <Badge
-                className={classes.hoverPointer}
-                onClick={(_) => onCardClick(pokemon, generation)}
-                color={primaryColor}
-                style={{
-                    border: "2px solid " + secondaryColor,
-                    boxShadow: "0px 0px 4px 1px " + secondaryColor,
-                }}
-            >
-                {pokemon.data.name}
-            </Badge>
-        </PokemonTooltip>
+        <Badge
+            className={classes.hoverPointer}
+            onClick={(_) => onCardClick(pokemon, generation)}
+            color={primaryColor}
+            style={{
+                border: "2px solid " + secondaryColor,
+                boxShadow: "0px 0px 4px 1px " + secondaryColor,
+            }}
+        >
+            {pokemon.data.name}
+        </Badge>
     );
 };

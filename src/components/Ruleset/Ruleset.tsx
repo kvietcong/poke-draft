@@ -31,7 +31,7 @@ import {
 } from "@mantine/hooks";
 import { pointRuleTable, pointRulesetTable } from "@/util/DatabaseTables";
 import { Pokemon } from "@/types";
-import { PokemonCard, PokemonPill } from "@/components/PokeView/View";
+import { PokemonCard, PokemonPill, PokemonTooltip } from "@/components/PokeView/View";
 
 type PointRule = [value: string, pokemonData: Pokemon[]];
 
@@ -66,11 +66,13 @@ export const RulesetAccordion = ({
                             {open && open.includes(value) ? (
                                 <Group justify="center">
                                     {pokemonData.map((pokemon) => (
+                                    <PokemonTooltip pokemon={pokemon}>
                                         <PokemonDisplay
                                             key={pokemon.data.id}
                                             pokemon={pokemon}
                                             generation={generation ?? 9}
                                         />
+                                    </PokemonTooltip>
                                     ))}
                                 </Group>
                             ) : null}

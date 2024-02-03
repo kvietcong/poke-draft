@@ -38,7 +38,7 @@ export const RulesetListView = () => {
         <Center>
             <Stack>
                 <Title ta="center" className={classes.title}>
-                    All{" "}
+                    All Point{" "}
                     <Text
                         inherit
                         variant="gradient"

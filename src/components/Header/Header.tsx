@@ -15,7 +15,7 @@ export const Header = () => {
     useEffect(() => {
         const newLinks = [
             { link: "/", label: "Home" },
-            { link: "/ruleset", label: "Rule Sets" },
+            { link: "/ruleset", label: "Point Rule Sets" },
             { link: "/game", label: "Games" },
             {
                 link: "/account",
