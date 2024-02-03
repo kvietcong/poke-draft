@@ -10,8 +10,9 @@ import {
 } from "react";
 import { useParams } from "react-router-dom";
 import { colorByType, getTypeColor } from "../../util/PokemonColors";
+import { getStatColor } from "../../util/StatColors";
 
-import { Sprites, PokemonSprite } from "@pkmn/img";
+import { Sprites, PokemonSprite, Icons } from "@pkmn/img";
 import { Dex, Species, toID } from "@pkmn/dex";
 
 import {
@@ -30,6 +31,8 @@ import {
     Slider,
     Chip,
     Checkbox,
+    Grid,
+    Progress,
 } from "@mantine/core";
 import Fuse from "fuse.js";
 import { Loading } from "../Loading/Loading";
@@ -65,9 +68,11 @@ const TypeToolTip = ({
 
 const PokemonCard = ({
     pokemon,
+    showBaseStats,
     onClick,
 }: {
     pokemon: Pokemon;
+    showBaseStats: boolean;
     onClick?: CardOnClick;
 }) => {
     const onCardClick = onClick || defaultCardOnClick;
@@ -94,8 +99,55 @@ const PokemonCard = ({
                     fit="contain"
                 />
                 <Text ta="center">{pokemon.data.name}</Text>
+                {showBaseStats && <BaseStatDisplay pokemon={pokemon}></BaseStatDisplay>}
+                
             </Card>
         </TypeToolTip>
+    );
+};
+
+const BaseStatDisplay = ({ pokemon }: { pokemon: Pokemon }) => {
+    const renderStatBar = (statName: string, statValue: number) => {
+        const barWidth = (statValue / 255) * 100; // Assuming base stat max is 255
+        return (<>
+            <div style={{ marginBottom: '4px', position: 'relative' }}>
+                <Progress
+                    size={20}
+                    value={barWidth}
+                    color={getStatColor(statName)}
+                />
+                <Text
+                    style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: 1,
+                        fontSize: '12px',
+                        paddingLeft: '5px',
+                        width: '100%',
+                        fontWeight: "bold",
+                        textShadow: "1px 1px 2px #000",
+                    }}
+                >
+                    {statName}: {statValue}
+                </Text>
+            </div>
+        </>
+        );
+    };
+
+    return (
+        <Grid gutter="xl">
+            <Grid.Col span={12}>
+                {renderStatBar('HP', pokemon.data.baseStats.hp)}
+                {renderStatBar('Attack', pokemon.data.baseStats.atk)}
+                {renderStatBar('Defense', pokemon.data.baseStats.def)}
+                {renderStatBar('Sp. Attack', pokemon.data.baseStats.spa)}
+                {renderStatBar('Sp. Defense', pokemon.data.baseStats.spd)}
+                {renderStatBar('Speed', pokemon.data.baseStats.spe)}
+            </Grid.Col>
+        </Grid>
     );
 };
 
@@ -124,11 +176,13 @@ export const RulesetAccordion = ({
     rules,
     setOpen,
     isMinimal,
+    showBaseStats
 }: {
     open?: string[];
     rules: PointRule[];
     setOpen?: Dispatch<SetStateAction<string[]>>;
     isMinimal?: boolean;
+    showBaseStats?: boolean;
 }) => {
     const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
     return (
@@ -151,6 +205,7 @@ export const RulesetAccordion = ({
                                         <PokemonDisplay
                                             key={pokemon.data.id}
                                             pokemon={pokemon}
+                                            showBaseStats={showBaseStats ?? false}
                                         />
                                     ))}
                                 </Group>
@@ -168,12 +223,17 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
     const [rulesetName, setRulesetName] = useState<string>("");
 
     const [name, setName] = useDebouncedState("", 300);
-    const [fuzzyLevel, setFuzzyLevel] = useState(0.3);
+    const [fuzzyLevel, setFuzzyLevel] = useState(0.2);
 
     const [types, setTypes] = useState<string[]>([]);
     const [willMatchAllTypes, setWillMatchAllTypes] = useState(true);
 
     const [isMinimal, setIsMinimal] = useState(false);
+    const [showBaseStats, setShowBaseStats] = useState(false);
+
+    const [showFilters, setShowFilters] = useState(false);
+    const [showTypeFilter, setShowTypeFilter] = useState(false);
+    const [showFuzzyLevelFilter, setShowFuzzyLevelFilter] = useState(false);
 
     const [scroll, scrollTo] = useWindowScroll();
     const [open, setOpen] = useState<string[]>([]);
@@ -268,8 +328,9 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
             const key = value.toString();
             const pokemonID = toID(rawPokemonID);
             if (!accumulated[key]) accumulated[value] = [];
+            const data = Dex.species.getByID(pokemonID);
             accumulated[key].push({
-                data: Dex.species.getByID(pokemonID),
+                data: data,
                 sprite: Sprites.getDexPokemon(pokemonID, {
                     gen: "gen5ani",
                 }) as PokemonSprite,
@@ -310,24 +371,40 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                         placeholder="Search for Pokemon"
                         onChange={(e) => setName(e.target.value)}
                     />
+                </Group>
+                <Group>
+                    <Text>Display Options:</Text>
                     <Checkbox
                         checked={isMinimal}
                         onChange={(e) => setIsMinimal(e.currentTarget.checked)}
                         label="Minimal View?"
                     />
-                </Group>
-                <Group>
-                    <Text>Name Fuzzing Strength: </Text>
-                    <Slider
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        style={{ flexGrow: 1 }}
-                        defaultValue={fuzzyLevel}
-                        onChangeEnd={setFuzzyLevel}
+                    <Checkbox
+                        checked={showBaseStats}
+                        onChange={(e) => setShowBaseStats(e.currentTarget.checked)}
+                        label="Show Base Stats?"
                     />
                 </Group>
-                <Group justify="center">
+                <Group>
+                    <Checkbox
+                        checked={showFilters}
+                        onChange={(e) => setShowFilters(e.currentTarget.checked)}
+                        label="Show Filters"
+                    />
+                </Group>
+                {showFilters && <Group>
+                    <Checkbox
+                        checked={showTypeFilter}
+                        onChange={(e) => setShowTypeFilter(e.currentTarget.checked)}
+                        label="Type"
+                    />
+                    <Checkbox
+                        checked={showFuzzyLevelFilter}
+                        onChange={(e) => setShowFuzzyLevelFilter(e.currentTarget.checked)}
+                        label="Fuzzy Search Multiplier"
+                    />
+                </Group>}
+                {showTypeFilter && <Group justify="left">
                     <Chip.Group multiple value={types} onChange={setTypes}>
                         {Object.entries(colorByType).map(([type, color]) => (
                             <Chip color={color} key={type} value={type}>
@@ -342,12 +419,24 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                             label="Match All Types"
                         />
                     </Chip.Group>
-                </Group>
+                </Group>}
+                {showFuzzyLevelFilter && <Group>
+                    <Text>Fuzzy search multiplier: </Text>
+                    <Slider
+                        min={0}
+                        max={0.5}
+                        step={0.05}
+                        style={{ flexGrow: 1 }}
+                        defaultValue={fuzzyLevel}
+                        onChangeEnd={setFuzzyLevel}
+                    />
+                </Group>}
                 <RulesetAccordion
                     open={open}
                     setOpen={setOpen}
                     isMinimal={isMinimal}
                     rules={filteredRules}
+                    showBaseStats={showBaseStats}
                 />
                 <Group
                     pos="fixed"

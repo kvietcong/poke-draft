@@ -46,7 +46,7 @@ dotenv.config({
 });
 
 const supabaseUrl = env.VITE_SUPABASE_URL;
-const supabaseKey = env.VITE_SUPABASE_KEY_ADMIN;
+const supabaseKey = env.VITE_SUPABASE_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 for (const pokemon of pokemon_to_add) {
