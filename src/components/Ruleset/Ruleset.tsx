@@ -436,7 +436,7 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                     </Button>
                 </Group>
                 <Group>
-                    <Collapse in={showFilters} width="100%">
+                    <Collapse in={showFilters}>
                         <Group>
                             <Checkbox
                                 checked={showTypeFilter}
