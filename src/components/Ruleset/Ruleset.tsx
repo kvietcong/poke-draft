@@ -438,41 +438,30 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                 <Group>
                     <Collapse in={showFilters} width="100%">
                         <Group>
-                        <Checkbox
-                                    checked={showTypeFilter}
-                                    onChange={() =>
-                                        setShowTypeFilter(!showTypeFilter)
-                                    }
-                                    label="Type"
-                                />
-                                                                <Checkbox
-                                    checked={showAbilityFilter}
-                                    onChange={() =>
-                                        setShowAbilityFilter(!showAbilityFilter)
-                                    }
-                                    label="Ability"
-                                />
-                                                                <Checkbox
-                                    checked={showFuzzyLevelFilter}
-                                    onChange={() =>
-                                        setShowFuzzyLevelFilter(
-                                            !showFuzzyLevelFilter
-                                        )
-                                    }
-                                    label="Fuzzy Search Multiplier"
-                                />
+                            <Checkbox
+                                checked={showTypeFilter}
+                                onChange={() =>
+                                    setShowTypeFilter(!showTypeFilter)
+                                }
+                                label="Type"
+                            />
+                            <Checkbox
+                                checked={showAbilityFilter}
+                                onChange={() =>
+                                    setShowAbilityFilter(!showAbilityFilter)
+                                }
+                                label="Ability"
+                            />
+                            <Checkbox
+                                checked={showFuzzyLevelFilter}
+                                onChange={() =>
+                                    setShowFuzzyLevelFilter(
+                                        !showFuzzyLevelFilter
+                                    )
+                                }
+                                label="Fuzzy Search Multiplier"
+                            />
                         </Group>
-                        <Grid size="xl">
-                            <Grid.Col span={10}>
-                                
-                            </Grid.Col>
-                            <Grid.Col span={10}>
-
-                            </Grid.Col>
-                            <Grid.Col span={10}>
-
-                            </Grid.Col>
-                        </Grid>
                     </Collapse>
                 </Group>
                 {showTypeFilter && (
@@ -497,15 +486,19 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                         </Chip.Group>
                     </Group>
                 )}
-                {showAbilityFilter && <Group>
-                    <Autocomplete
-                        label="Ability"
-                        limit={5}
-                        data={Dex.forGen(rulesetGeneration).abilities.all().map(ability => ability.name)}
-                        value={abilityFilterText}
-                        onChange={setAbilityFilterText}
-                    />
-                </Group>}
+                {showAbilityFilter && (
+                    <Group>
+                        <Autocomplete
+                            label="Ability"
+                            limit={5}
+                            data={Dex.forGen(rulesetGeneration)
+                                .abilities.all()
+                                .map((ability) => ability.name)}
+                            value={abilityFilterText}
+                            onChange={setAbilityFilterText}
+                        />
+                    </Group>
+                )}
                 {showFuzzyLevelFilter && (
                     <Group>
                         <Text>Fuzzy search multiplier: </Text>
