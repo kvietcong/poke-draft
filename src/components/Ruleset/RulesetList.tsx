@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import classes from "./Rule.module.css";
-import supabase from "../../supabase";
+import classes from "@/App.module.css";
+import supabase from "@/supabase";
 
 import {
     Card,

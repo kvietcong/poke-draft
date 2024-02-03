@@ -1,6 +1,6 @@
 import { Anchor, Container, Text, Title } from "@mantine/core";
-import classes from "./NotFound.module.css";
 import { Link } from "react-router-dom";
+import classes from "@/App.module.css";
 
 export const NotFound = () => (
     <>

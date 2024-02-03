@@ -1,214 +1,39 @@
-import supabase from "../../supabase";
-import classes from "./Rule.module.css";
-import {
-    useState,
-    useEffect,
-    useMemo,
-    Dispatch,
-    SetStateAction,
-    ReactNode,
-} from "react";
+import supabase from "@/supabase";
+import classes from "@/App.module.css";
+import { useState, useEffect, useMemo, Dispatch, SetStateAction } from "react";
 import { useParams } from "react-router-dom";
-import { colorByType, getTypeColor } from "../../util/PokemonColors";
-import { getStatColor } from "../../util/StatColors";
-import { getGenerationName } from "../../util/GenerationName";
+import { colorByType } from "@/util/PokemonColors";
 
 import { Sprites, PokemonSprite } from "@pkmn/img";
-import { Dex, Species, toID } from "@pkmn/dex";
+import { Dex, toID } from "@pkmn/dex";
 
 import {
-    Card,
-    Image,
     Text,
-    Badge,
     Group,
     Center,
     Title,
     Stack,
     Accordion,
-    TooltipFloating,
     Input,
     Button,
     Slider,
     Chip,
     Checkbox,
-    Grid,
-    Progress,
     Collapse,
     Autocomplete,
 } from "@mantine/core";
 import Fuse from "fuse.js";
-import { Loading } from "../Loading/Loading";
-import { useDebouncedState, useDisclosure, useWindowScroll } from "@mantine/hooks";
+import { Loading } from "@/components/Loading/Loading";
+import {
+    useDebouncedState,
+    useDisclosure,
+    useWindowScroll,
+} from "@mantine/hooks";
 import { pointRuleTable, pointRulesetTable } from "@/util/DatabaseTables";
+import { Pokemon } from "@/types";
+import { PokemonCard, PokemonPill } from "@/components/PokeView/View";
 
-type Pokemon = {
-    data: Species;
-    sprite: PokemonSprite;
-};
 type PointRule = [value: string, pokemonData: Pokemon[]];
-type CardOnClick = (pokemon: Pokemon) => void;
-const defaultCardOnClick = (pokemon: Pokemon, generation: number) =>
-    window.open(`https://www.smogon.com/dex/${getGenerationName(generation)}/pokemon/${pokemon.data.name}/`);
-
-const PokemonTooltip = ({
-    children,
-    pokemon,
-}: {
-    children: ReactNode;
-    pokemon: Pokemon;
-}) => (
-    <TooltipFloating
-        label={<HoverTooltipLabel pokemon={pokemon}></HoverTooltipLabel>}
-    >
-        {children}
-    </TooltipFloating>
-);
-
-const HoverTooltipLabel = ({
-    pokemon,
-}: {
-    pokemon: Pokemon;
-}) => {
-    const typeBadges = pokemon.data.types.map((type) => (
-        <Badge key={type} color={getTypeColor(type)}>
-            {type}
-        </Badge>
-    ))
-    return <Stack miw={250} gap={4}>
-        <BaseStatDisplay pokemon={pokemon}></BaseStatDisplay>
-        <Group grow>
-            {typeBadges}
-        </Group>
-        <Text>
-            Abilities: {Object.values(pokemon.data.abilities as object).join(", ")}
-        </Text>
-    </Stack>
-}
-
-const PokemonCard = ({
-    pokemon,
-    generation,
-    onClick,
-}: {
-    pokemon: Pokemon;
-    generation: number;
-    onClick?: CardOnClick;
-}) => {
-    const onCardClick = onClick || defaultCardOnClick;
-    return (
-        <PokemonTooltip pokemon={pokemon}>
-            <Card
-                radius="lg"
-                withBorder
-                w={150}
-                mih={150}
-                padding={20}
-                onClick={(_) => onCardClick(pokemon, generation)}
-                className={classes.hoverPointer}
-            >
-                <Image
-                    src={pokemon.sprite.url}
-                    style={{
-                        imageRendering: pokemon.sprite.pixelated
-                            ? "pixelated"
-                            : "auto",
-                    }}
-                    w="100%"
-                    mah={100}
-                    fit="contain"
-                />
-                <Text ta="center">{pokemon.data.name}</Text>
-                {pokemon.data.types.map((type) => (
-                    <Badge key={type} m={1} w={100} color={getTypeColor(type)}>
-                        {type}
-                    </Badge>
-                ))}
-            </Card>
-        </PokemonTooltip>
-    );
-};
-
-const BaseStatDisplay = ({ pokemon }: { pokemon: Pokemon }) => {
-    const StatBar = (statName: string, statValue: number) => {
-        const barWidth = (statValue / 200) * 100; // Assuming base stat max is 255
-        return (
-            <>
-                <Progress.Root
-                    size={20}
-                    radius={0}
-                >
-                    <Progress.Section
-
-                        value={barWidth}
-                        color={getStatColor(statName)}>
-                        <Text
-                            style={{
-                                position: 'absolute',
-                                top: '50%',
-                                left: '50%',
-                                transform: 'translate(-50%, -50%)',
-                                zIndex: 1,
-                                fontSize: '12px',
-                                paddingLeft: '5px',
-                                width: '100%',
-                                textShadow: "1px 1px 2px #000",
-                                color: "#FFF"
-                            }}
-                        >
-                            {statName}: {statValue}
-                        </Text>
-                    </Progress.Section>
-                </Progress.Root>
-
-            </>
-        );
-    };
-
-    return (
-        <Grid gutter="xl">
-            <Grid.Col span={12}>
-                {StatBar('HP', pokemon.data.baseStats.hp)}
-                {StatBar('Attack', pokemon.data.baseStats.atk)}
-                {StatBar('Defense', pokemon.data.baseStats.def)}
-                {StatBar('Sp. Attack', pokemon.data.baseStats.spa)}
-                {StatBar('Sp. Defense', pokemon.data.baseStats.spd)}
-                {StatBar('Speed', pokemon.data.baseStats.spe)}
-            </Grid.Col>
-        </Grid>
-    );
-};
-
-const PokemonPill = ({
-    pokemon,
-    generation,
-    onClick,
-}: {
-    pokemon: Pokemon;
-    generation: number;
-    onClick?: CardOnClick;
-}) => {
-    const onCardClick = onClick || defaultCardOnClick;
-    const primaryColor = getTypeColor(pokemon.data.types[0]);
-    const secondaryColor = getTypeColor(
-        pokemon.data.types[1] ?? pokemon.data.types[0]
-    );
-    return (
-        <PokemonTooltip pokemon={pokemon}>
-            <Badge
-                className={classes.hoverPointer}
-                onClick={(_) => onCardClick(pokemon, generation)}
-                color={primaryColor}
-                style={{
-                    border: "2px solid " + secondaryColor,
-                    boxShadow: "0px 0px 4px 1px " + secondaryColor,
-                }}
-            >
-                {pokemon.data.name}
-            </Badge>
-        </PokemonTooltip>
-    );
-};
 
 export const RulesetAccordion = ({
     open,
@@ -271,9 +96,6 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
     const [isMinimal, setIsMinimal] = useState(false);
 
     const [showFilters, filterHandlers] = useDisclosure(false);
-    const [showTypeFilter, setShowTypeFilter] = useState(false);
-    const [showAbilityFilter, setShowAbilityFilter] = useState(false);
-    const [showFuzzyLevelFilter, setShowFuzzyLevelFilter] = useState(false);
     const [abilityFilterText, setAbilityFilterText] = useState("");
 
     const [scroll, scrollTo] = useWindowScroll();
@@ -321,9 +143,10 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
         }
         if (abilityFilterText != "") {
             const abilityPredicate = (pokemon: Pokemon) => {
-            console.log(Object.values(pokemon.data.abilities as object))
-                return Object.values(pokemon.data.abilities as object)
-                        .includes(abilityFilterText);
+                console.log(Object.values(pokemon.data.abilities as object));
+                return Object.values(pokemon.data.abilities as object).includes(
+                    abilityFilterText
+                );
             };
             predicates.push(abilityPredicate);
         }
@@ -335,7 +158,14 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
             return acc;
         }, []);
         return result;
-    }, [name, rules, types, willMatchAllTypes, nameFuzzySearcher, abilityFilterText]);
+    }, [
+        name,
+        rules,
+        types,
+        willMatchAllTypes,
+        nameFuzzySearcher,
+        abilityFilterText,
+    ]);
 
     const fetchRuleset = async (ruleset: number | string) => {
         let { data, error } = await supabase
@@ -378,7 +208,8 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
             const key = value.toString();
             const pokemonID = toID(rawPokemonID);
             if (!accumulated[key]) accumulated[value] = [];
-            const data = Dex.forGen(rulesetGeneration).species.getByID(pokemonID);
+            const data =
+                Dex.forGen(rulesetGeneration).species.getByID(pokemonID);
             accumulated[key].push({
                 data: data,
                 sprite: Sprites.getDexPokemon(pokemonID, {
@@ -430,88 +261,61 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                         label="Minimal View?"
                     />
                 </Group>
-                <Group justify="left">
-                    <Button onClick={filterHandlers.toggle}>
-                        Show Filters
-                    </Button>
-                </Group>
-                <Group>
-                    <Collapse in={showFilters}>
-                        <Group>
-                            <Checkbox
-                                checked={showTypeFilter}
-                                onChange={() =>
-                                    setShowTypeFilter(!showTypeFilter)
-                                }
-                                label="Type"
-                            />
-                            <Checkbox
-                                checked={showAbilityFilter}
-                                onChange={() =>
-                                    setShowAbilityFilter(!showAbilityFilter)
-                                }
-                                label="Ability"
-                            />
-                            <Checkbox
-                                checked={showFuzzyLevelFilter}
-                                onChange={() =>
-                                    setShowFuzzyLevelFilter(
-                                        !showFuzzyLevelFilter
+                <Button onClick={filterHandlers.toggle}>Toggle Filters</Button>
+                <Collapse in={showFilters}>
+                    <Stack>
+                        <Group justify="left">
+                            <Chip.Group
+                                multiple
+                                value={types}
+                                onChange={setTypes}
+                            >
+                                {Object.entries(colorByType).map(
+                                    ([type, color]) => (
+                                        <Chip
+                                            color={color}
+                                            key={type}
+                                            value={type}
+                                        >
+                                            {type}
+                                        </Chip>
                                     )
-                                }
-                                label="Fuzzy Search Multiplier"
+                                )}
+                                <Checkbox
+                                    checked={willMatchAllTypes}
+                                    onChange={(e) =>
+                                        setWillMatchAllTypes(
+                                            e.currentTarget.checked
+                                        )
+                                    }
+                                    label="Match All Types"
+                                />
+                            </Chip.Group>
+                        </Group>
+                        <Group>
+                            <Autocomplete
+                                label="Ability"
+                                limit={5}
+                                data={Dex.forGen(rulesetGeneration)
+                                    .abilities.all()
+                                    .map((ability) => ability.name)}
+                                value={abilityFilterText}
+                                onChange={setAbilityFilterText}
                             />
                         </Group>
-                    </Collapse>
-                </Group>
-                {showTypeFilter && (
-                    <Group justify="left">
-                        <Chip.Group multiple value={types} onChange={setTypes}>
-                            {Object.entries(colorByType).map(
-                                ([type, color]) => (
-                                    <Chip color={color} key={type} value={type}>
-                                        {type}
-                                    </Chip>
-                                )
-                            )}
-                            <Checkbox
-                                checked={willMatchAllTypes}
-                                onChange={(e) =>
-                                    setWillMatchAllTypes(
-                                        e.currentTarget.checked
-                                    )
-                                }
-                                label="Match All Types"
+                        <Group>
+                            <Text>Fuzzy search multiplier: </Text>
+                            <Slider
+                                min={0}
+                                max={0.5}
+                                step={0.05}
+                                style={{ flexGrow: 1 }}
+                                defaultValue={fuzzyLevel}
+                                onChangeEnd={setFuzzyLevel}
                             />
-                        </Chip.Group>
-                    </Group>
-                )}
-                {showAbilityFilter && (
-                    <Group>
-                        <Autocomplete
-                            label="Ability"
-                            limit={5}
-                            data={Dex.forGen(rulesetGeneration)
-                                .abilities.all()
-                                .map((ability) => ability.name)}
-                            value={abilityFilterText}
-                            onChange={setAbilityFilterText}
-                        />
-                    </Group>
-                )}
-                {showFuzzyLevelFilter && (
-                    <Group>
-                        <Text>Fuzzy search multiplier: </Text>
-                        <Slider
-                            min={0}
-                            max={0.5}
-                            step={0.05}
-                            style={{ flexGrow: 1 }}
-                            defaultValue={fuzzyLevel}
-                            onChangeEnd={setFuzzyLevel}
-                        />
-                    </Group>
-                )}
+                        </Group>
+                    </Stack>
+                </Collapse>
                 <RulesetAccordion
                     open={open}
                     setOpen={setOpen}

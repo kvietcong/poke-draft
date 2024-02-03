@@ -1,5 +1,5 @@
 import { Title } from "@mantine/core";
-import classes from "./Loading.module.css";
+import classes from "@/App.module.css";
 
 export const Loading = () => (
     <Title className={classes.title} ta="center">

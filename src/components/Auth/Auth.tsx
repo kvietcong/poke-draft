@@ -1,5 +1,5 @@
 import { AppContext } from "@/App";
-import { useContext, useEffect } from "react";
+import { useContext } from "react";
 
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
@@ -14,9 +14,9 @@ import {
     Title,
     useMantineColorScheme,
 } from "@mantine/core";
-import classes from "./Auth.module.css";
+import classes from "@/App.module.css";
 import { Link } from "react-router-dom";
-import { ColorSchemeToggle } from "../ColorSchemeToggle/ColorSchemeToggle";
+import { ColorSchemeToggle } from "@/components/ColorSchemeToggle/ColorSchemeToggle";
 
 export const LoginView = () => {
     const { colorScheme } = useMantineColorScheme();

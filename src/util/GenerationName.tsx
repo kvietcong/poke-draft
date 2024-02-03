@@ -11,6 +11,6 @@ export const generationSmogonName: { [id: string]: string } = {
 };
 
 export const getGenerationName = (gen: number) =>
-generationSmogonName[gen] || "SV";
+    generationSmogonName[gen] || "SV";
 
 export default getGenerationName;
