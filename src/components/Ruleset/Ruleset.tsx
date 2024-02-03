@@ -36,6 +36,7 @@ import {
     Progress,
     Collapse,
     Autocomplete,
+    MultiSelect,
 } from "@mantine/core";
 import Fuse from "fuse.js";
 import { Loading } from "../Loading/Loading";
@@ -273,11 +274,29 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
     const [showFilters, filterHandlers] = useDisclosure(false);
     const [showTypeFilter, setShowTypeFilter] = useState(false);
     const [showAbilityFilter, setShowAbilityFilter] = useState(false);
+    const [showMoveFilter, setShowMoveFilter] = useState(false);
     const [showFuzzyLevelFilter, setShowFuzzyLevelFilter] = useState(false);
     const [abilityFilterText, setAbilityFilterText] = useState("");
+    const [moves, setMoves] = useState<string[]>([]);
+    const [willMatchAllMoves, setWillMatchAllMoves] = useState(true);
 
     const [scroll, scrollTo] = useWindowScroll();
     const [open, setOpen] = useState<string[]>([]);
+
+    const dex = useMemo(() => Dex.forGen(rulesetGeneration),  [rulesetGeneration]);
+    const [learnsetCache, setLearnsetCache] = useState<object>(null)
+
+    useEffect(() => {
+        const a = async () => {
+            const learnset = {}
+            for (const pokemon in dex.species.all()) {
+                console.log("pokemon",pokemon)
+                learnset[pokemon] = await dex.learnsets.get(pokemon)
+            }
+            setLearnsetCache(learnset)
+        }
+        a();
+    }, [dex])
 
     const nameFuzzySearcher = useMemo(() => {
         const names = rules.reduce<{ name: string; id: string }[]>(
@@ -321,11 +340,23 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
         }
         if (abilityFilterText != "") {
             const abilityPredicate = (pokemon: Pokemon) => {
-            console.log(Object.values(pokemon.data.abilities as object))
                 return Object.values(pokemon.data.abilities as object)
                         .includes(abilityFilterText);
             };
             predicates.push(abilityPredicate);
+        }
+        if (moves.length && learnsetCache) {
+            console.log("learnsetCache", learnsetCache);
+            const movePredicate = (pokemon: Pokemon) => {
+                const fn = willMatchAllMoves ? moves.every : moves.some;
+                console.log(learnsetCache[pokemon.data.id])
+                return fn.bind(moves)((move: string) =>
+                    Object.values(learnsetCache[pokemon.data.id])
+                        .map((move) => move.name)
+                        .includes(move)
+                );
+            };
+            predicates.push(movePredicate);
         }
         const doesPokemonMatch = (pokemon: Pokemon) =>
             predicates.every((predicate) => predicate(pokemon));
@@ -335,7 +366,7 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
             return acc;
         }, []);
         return result;
-    }, [name, rules, types, willMatchAllTypes, nameFuzzySearcher, abilityFilterText]);
+    }, [name, rules, types, willMatchAllTypes, nameFuzzySearcher, abilityFilterText, moves, willMatchAllMoves]);
 
     const fetchRuleset = async (ruleset: number | string) => {
         let { data, error } = await supabase
@@ -378,7 +409,7 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
             const key = value.toString();
             const pokemonID = toID(rawPokemonID);
             if (!accumulated[key]) accumulated[value] = [];
-            const data = Dex.forGen(rulesetGeneration).species.getByID(pokemonID);
+            const data = dex.species.getByID(pokemonID);
             accumulated[key].push({
                 data: data,
                 sprite: Sprites.getDexPokemon(pokemonID, {
@@ -396,7 +427,7 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
     useEffect(() => {
         fetchRuleset(ruleset);
         fetchRules(ruleset);
-    }, [ruleset]);
+    }, [ruleset, rulesetGeneration]);
 
     if (!rulesetName || !rules) return <Loading />;
 
@@ -453,6 +484,13 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                                 label="Ability"
                             />
                             <Checkbox
+                                checked={showMoveFilter}
+                                onChange={() =>
+                                    setShowMoveFilter(!showMoveFilter)
+                                }
+                                label="Move"
+                            />
+                            <Checkbox
                                 checked={showFuzzyLevelFilter}
                                 onChange={() =>
                                     setShowFuzzyLevelFilter(
@@ -490,12 +528,35 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                     <Group>
                         <Autocomplete
                             label="Ability"
+                            placehold="Type an ability..."
                             limit={5}
-                            data={Dex.forGen(rulesetGeneration)
-                                .abilities.all()
+                            data={dex.abilities
+                                .all()
                                 .map((ability) => ability.name)}
                             value={abilityFilterText}
                             onChange={setAbilityFilterText}
+                        />
+                    </Group>
+                )}
+                {showMoveFilter && (
+                    <Group align="flex-begin" grow>
+                        <MultiSelect
+                            label="Move"
+                            placehold="Type a move..."
+                            limit={5}
+                            data={dex.moves.all().map((move) => move.name)}
+                            searchable
+                            hidePickedOptions
+                            value={moves}
+                            onChange={setMoves}
+                        />
+                        <Checkbox
+                            mt={32}
+                            checked={willMatchAllMoves}
+                            onChange={(e) =>
+                                setWillMatchAllMoves(e.currentTarget.checked)
+                            }
+                            label="Match All Moves"
                         />
                     </Group>
                 )}
