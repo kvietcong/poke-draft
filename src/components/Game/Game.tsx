@@ -22,6 +22,7 @@ import {
     Button,
     Center,
     Checkbox,
+    Divider,
     Grid,
     Group,
     Stack,
@@ -43,6 +44,7 @@ import { Loading } from "../Loading/Loading";
 import { useDebouncedState } from "@mantine/hooks";
 import { AppContext } from "@/App";
 import { notifications } from "@mantine/notifications";
+import { RulesetView } from "../Ruleset/Ruleset";
 
 type ValueByPokemonID = { [pokemonID: string]: number };
 const getPointLabel = (
@@ -498,8 +500,11 @@ const Game = ({ game }: { game: string }) => {
                 </Title>
                 {getIsJoinable() ? (
                     <Button onClick={joinGame}>Join Game</Button>
-                ) : (session && !(session.user.id in playerNameByID)) && (
-                    <Text>Game isn't accepting anymore players</Text>
+                ) : (
+                    session &&
+                    !(session.user.id in playerNameByID) && (
+                        <Text>Game isn't accepting anymore players</Text>
+                    )
                 )}
                 <Title order={3}>
                     Game Ruleset:{" "}
@@ -571,6 +576,8 @@ const Game = ({ game }: { game: string }) => {
                         </Stack>
                     </Grid.Col>
                 </Grid>
+                <Divider />
+                <RulesetView ruleset={pointRuleset.id} />
             </Stack>
         </Center>
     );

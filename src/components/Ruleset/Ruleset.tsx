@@ -31,7 +31,11 @@ import {
 } from "@mantine/hooks";
 import { pointRuleTable, pointRulesetTable } from "@/util/DatabaseTables";
 import { Pokemon } from "@/types";
-import { PokemonCard, PokemonPill, PokemonTooltip } from "@/components/PokeView/View";
+import {
+    PokemonCard,
+    PokemonPill,
+    PokemonTooltip,
+} from "@/components/PokeView/View";
 
 type PointRule = [value: string, pokemonData: Pokemon[]];
 
@@ -66,13 +70,13 @@ export const RulesetAccordion = ({
                             {open && open.includes(value) ? (
                                 <Group justify="center">
                                     {pokemonData.map((pokemon) => (
-                                    <PokemonTooltip pokemon={pokemon}>
-                                        <PokemonDisplay
-                                            key={pokemon.data.id}
-                                            pokemon={pokemon}
-                                            generation={generation ?? 9}
-                                        />
-                                    </PokemonTooltip>
+                                        <PokemonTooltip pokemon={pokemon}>
+                                            <PokemonDisplay
+                                                key={pokemon.data.id}
+                                                pokemon={pokemon}
+                                                generation={generation ?? 9}
+                                            />
+                                        </PokemonTooltip>
                                     ))}
                                 </Group>
                             ) : null}
@@ -234,134 +238,127 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
     if (!rulesetName || !rules) return <Loading />;
 
     return (
-        <Center>
-            <Stack w="50%">
-                <Title className={classes.title} ta="center">
-                    Ruleset:{" "}
-                    <Text
-                        inherit
-                        variant="gradient"
-                        component="span"
-                        gradient={{ from: "pink", to: "yellow" }}
-                    >
-                        {rulesetName}
-                    </Text>
-                </Title>
-                <Group>
-                    <Input
-                        defaultValue={name}
-                        style={{ flexGrow: 1 }}
-                        placeholder="Search for Pokemon"
-                        onChange={(e) => setName(e.target.value)}
-                    />
-                </Group>
-                <Group>
-                    <Text>Display Options:</Text>
-                    <Checkbox
-                        checked={isMinimal}
-                        onChange={(e) => setIsMinimal(e.currentTarget.checked)}
-                        label="Minimal View?"
-                    />
-                </Group>
-                <Button onClick={filterHandlers.toggle}>Toggle Filters</Button>
-                <Collapse in={showFilters}>
-                    <Stack>
-                        <Group justify="left">
-                            <Chip.Group
-                                multiple
-                                value={types}
-                                onChange={setTypes}
-                            >
-                                {Object.entries(colorByType).map(
-                                    ([type, color]) => (
-                                        <Chip
-                                            color={color}
-                                            key={type}
-                                            value={type}
-                                        >
-                                            {type}
-                                        </Chip>
-                                    )
-                                )}
-                                <Checkbox
-                                    checked={willMatchAllTypes}
-                                    onChange={(e) =>
-                                        setWillMatchAllTypes(
-                                            e.currentTarget.checked
-                                        )
-                                    }
-                                    label="Match All Types"
-                                />
-                            </Chip.Group>
-                        </Group>
-                        <Group>
-                            <Autocomplete
-                                label="Ability"
-                                limit={5}
-                                data={Dex.forGen(rulesetGeneration)
-                                    .abilities.all()
-                                    .map((ability) => ability.name)}
-                                value={abilityFilterText}
-                                onChange={setAbilityFilterText}
-                            />
-                        </Group>
-                        <Group>
-                            <Text>Fuzzy search multiplier: </Text>
-                            <Slider
-                                min={0}
-                                max={0.5}
-                                step={0.05}
-                                style={{ flexGrow: 1 }}
-                                defaultValue={fuzzyLevel}
-                                onChangeEnd={setFuzzyLevel}
-                            />
-                        </Group>
-                    </Stack>
-                </Collapse>
-                <RulesetAccordion
-                    open={open}
-                    setOpen={setOpen}
-                    isMinimal={isMinimal}
-                    rules={filteredRules}
-                    generation={rulesetGeneration}
-                />
-                <Group
-                    pos="fixed"
-                    left={25}
-                    bottom={20}
-                    style={{ zIndex: 500 }}
+        <>
+            <Title className={classes.title} ta="center">
+                Ruleset:{" "}
+                <Text
+                    inherit
+                    variant="gradient"
+                    component="span"
+                    gradient={{ from: "pink", to: "yellow" }}
                 >
-                    <Button
-                        onClick={() =>
-                            setOpen(
-                                open.length
-                                    ? []
-                                    : Object.values(rules)
-                                          .map((x) => x[0])
-                                          .filter((x) => x != "0")
-                            )
-                        }
-                    >
-                        {open.length ? "Close All" : "Open All"}
-                    </Button>
-                    <Button
-                        onClick={() => {
-                            if (scroll.y > 100) scrollTo({ y: 0 });
-                            else
-                                scrollTo({
-                                    y: window.document.body.scrollHeight,
-                                });
-                        }}
-                    >
-                        Go {scroll.y > 100 ? "Up" : "Down"}
-                    </Button>
-                </Group>
-            </Stack>
-        </Center>
+                    {rulesetName}
+                </Text>
+            </Title>
+            <Group>
+                <Input
+                    defaultValue={name}
+                    style={{ flexGrow: 1 }}
+                    placeholder="Search for Pokemon"
+                    onChange={(e) => setName(e.target.value)}
+                />
+            </Group>
+            <Group>
+                <Text>Display Options:</Text>
+                <Checkbox
+                    checked={isMinimal}
+                    onChange={(e) => setIsMinimal(e.currentTarget.checked)}
+                    label="Minimal View?"
+                />
+            </Group>
+            <Button onClick={filterHandlers.toggle}>Toggle Filters</Button>
+            <Collapse in={showFilters}>
+                <Stack>
+                    <Group justify="left">
+                        <Chip.Group multiple value={types} onChange={setTypes}>
+                            {Object.entries(colorByType).map(
+                                ([type, color]) => (
+                                    <Chip color={color} key={type} value={type}>
+                                        {type}
+                                    </Chip>
+                                )
+                            )}
+                            <Checkbox
+                                checked={willMatchAllTypes}
+                                onChange={(e) =>
+                                    setWillMatchAllTypes(
+                                        e.currentTarget.checked
+                                    )
+                                }
+                                label="Match All Types"
+                            />
+                        </Chip.Group>
+                    </Group>
+                    <Group>
+                        <Autocomplete
+                            label="Ability"
+                            limit={5}
+                            data={Dex.forGen(rulesetGeneration)
+                                .abilities.all()
+                                .map((ability) => ability.name)}
+                            value={abilityFilterText}
+                            onChange={setAbilityFilterText}
+                        />
+                    </Group>
+                    <Group>
+                        <Text>Fuzzy search multiplier: </Text>
+                        <Slider
+                            min={0}
+                            max={0.5}
+                            step={0.05}
+                            style={{ flexGrow: 1 }}
+                            defaultValue={fuzzyLevel}
+                            onChangeEnd={setFuzzyLevel}
+                        />
+                    </Group>
+                </Stack>
+            </Collapse>
+            <RulesetAccordion
+                open={open}
+                setOpen={setOpen}
+                isMinimal={isMinimal}
+                rules={filteredRules}
+                generation={rulesetGeneration}
+            />
+            <Group pos="fixed" left={25} bottom={20} style={{ zIndex: 500 }}>
+                <Button
+                    onClick={() =>
+                        setOpen(
+                            open.length
+                                ? []
+                                : Object.values(rules)
+                                    .map((x) => x[0])
+                                    .filter((x) => x != "0")
+                        )
+                    }
+                >
+                    {open.length ? "Close All" : "Open All"}
+                </Button>
+                <Button
+                    onClick={() => {
+                        if (scroll.y > 100) scrollTo({ y: 0 });
+                        else
+                            scrollTo({
+                                y: window.document.body.scrollHeight,
+                            });
+                    }}
+                >
+                    Go {scroll.y > 100 ? "Up" : "Down"}
+                </Button>
+            </Group>
+        </>
     );
 };
 
+const RulesetCentered = ({ ruleset }: { ruleset: string }) => (
+    <Center>
+        <Stack w="50%">
+            <RulesetView ruleset={ruleset} />
+        </Stack>
+    </Center>
+);
+
 export const RulesetPage = () => {
     const { id } = useParams();
-    return id && <RulesetView ruleset={id} />;
+    return id && <RulesetCentered ruleset={id} />;
 };
