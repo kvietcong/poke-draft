@@ -44,13 +44,11 @@ export const RulesetAccordion = ({
     rules,
     setOpen,
     isMinimal,
-    generation,
 }: {
     open?: string[];
     rules: PointRule[];
     setOpen?: Dispatch<SetStateAction<string[]>>;
     isMinimal?: boolean;
-    generation?: number;
 }) => {
     const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
     return (
@@ -74,7 +72,6 @@ export const RulesetAccordion = ({
                                             <PokemonDisplay
                                                 key={pokemon.data.id}
                                                 pokemon={pokemon}
-                                                generation={generation ?? 9}
                                             />
                                         </PokemonTooltip>
                                     ))}
@@ -88,7 +85,7 @@ export const RulesetAccordion = ({
     );
 };
 
-export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
+export const RulesetView = ({ ruleset }: { ruleset: string }) => {
     const [rules, setRules] = useState<PointRule[]>([]);
     const [rulesetName, setRulesetName] = useState<string>("");
     const [rulesetGeneration, setRulesetGeneration] = useState(1);
@@ -106,6 +103,10 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
 
     const [scroll, scrollTo] = useWindowScroll();
     const [open, setOpen] = useState<string[]>([]);
+
+    const dex = useMemo(() => {
+        return Dex.forGen(rulesetGeneration);
+    }, [rulesetGeneration]);
 
     const nameFuzzySearcher = useMemo(() => {
         const names = rules.reduce<{ name: string; id: string }[]>(
@@ -185,7 +186,7 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
         setRulesetGeneration(data[0].generation);
     };
 
-    const fetchRules = async (ruleset: number | string) => {
+    const fetchRules = async (ruleset: string) => {
         let { data, error } = await supabase
             .from(pointRuleTable)
             .select("value, pokemon_id")
@@ -215,7 +216,7 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
             const pokemonID = toID(rawPokemonID);
             if (!accumulated[key]) accumulated[value] = [];
             const data =
-                Dex.forGen(rulesetGeneration).species.getByID(pokemonID);
+                dex.species.getByID(pokemonID);
             accumulated[key].push({
                 data: data,
                 sprite: Sprites.getDexPokemon(pokemonID, {
@@ -233,7 +234,7 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
     useEffect(() => {
         fetchRuleset(ruleset);
         fetchRules(ruleset);
-    }, [ruleset]);
+    }, [ruleset, dex]);
 
     if (!rulesetName || !rules) return <Loading />;
 
@@ -293,8 +294,7 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                         <Autocomplete
                             label="Ability"
                             limit={5}
-                            data={Dex.forGen(rulesetGeneration)
-                                .abilities.all()
+                            data={dex.abilities.all()
                                 .map((ability) => ability.name)}
                             value={abilityFilterText}
                             onChange={setAbilityFilterText}
@@ -318,7 +318,6 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                 setOpen={setOpen}
                 isMinimal={isMinimal}
                 rules={filteredRules}
-                generation={rulesetGeneration}
             />
             <Group pos="fixed" left={25} bottom={20} style={{ zIndex: 500 }}>
                 <Button
@@ -327,8 +326,8 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                             open.length
                                 ? []
                                 : Object.values(rules)
-                                      .map((x) => x[0])
-                                      .filter((x) => x != "0")
+                                    .map((x) => x[0])
+                                    .filter((x) => x != "0")
                         )
                     }
                 >

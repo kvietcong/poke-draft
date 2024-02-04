@@ -75,7 +75,6 @@ export const SelectionAccordion = ({
     open,
     setOpen,
     isMinimal,
-    generation,
     selectionData,
     playerNameByID,
     valueByPokemonID,
@@ -84,7 +83,6 @@ export const SelectionAccordion = ({
     open: string[];
     setOpen: Dispatch<SetStateAction<string[]>>;
     isMinimal: boolean;
-    generation?: number;
     selectionData: SelectionData;
     playerNameByID: { [id: string]: string };
     valueByPokemonID: ValueByPokemonID;
@@ -118,10 +116,7 @@ export const SelectionAccordion = ({
                                         pokemon={pokemon}
                                         key={pokemon.data.id}
                                     >
-                                        <PokemonDisplay
-                                            pokemon={pokemon}
-                                            generation={generation ?? 9}
-                                        />
+                                        <PokemonDisplay pokemon={pokemon} />
                                         <Text>
                                             {getPointLabel(
                                                 pokemon,
@@ -140,11 +135,9 @@ export const SelectionAccordion = ({
 };
 
 const PokemonSelector = ({
-    generation,
     valueByPokemonID,
     onSelect,
 }: {
-    generation: number;
     valueByPokemonID: { [pokemonID: string]: number };
     onSelect?: (pokemon: Pokemon) => any;
 }) => {
@@ -169,7 +162,7 @@ const PokemonSelector = ({
             )}
             <Title>{getPointLabel(pokemon, valueByPokemonID)}</Title>
             <Center>
-                <PokemonCard pokemon={pokemon} generation={generation} />
+                <PokemonCard pokemon={pokemon} />
             </Center>
             <Title>Stats</Title>
             <BasicStatDisplay pokemon={pokemon} />
@@ -199,7 +192,8 @@ const Game = ({ game }: { game: string }) => {
     const [gameName, setGameName] = useState<string>("");
     const [gameRuleset, setGameRuleset] = useState<{
         name: string;
-        rules: any;
+        maxPoints: number;
+        maxTeamSize: number;
     }>();
 
     const [playerNameByID, setPlayerNameByID] = useState<{
@@ -209,13 +203,13 @@ const Game = ({ game }: { game: string }) => {
         [id: string]: Pokemon[];
     }>();
 
-    type RulesetInfo = {
+    type PointRulesetInfo = {
         id: string;
         generation: number;
         name: string;
         valueByPokemonID: { [pokemonID: string]: number };
     };
-    const [pointRuleset, setPointRuleset] = useState<RulesetInfo>();
+    const [pointRuleset, setPointRuleset] = useState<PointRulesetInfo>();
 
     const [open, setOpen] = useState<string[]>([]);
     const [isMinimal, setIsMinimal] = useState(false);
@@ -225,7 +219,7 @@ const Game = ({ game }: { game: string }) => {
             .from(gameTable)
             .select(
                 `name,
-                ${gameRulesetTable} (name, rules),
+                ${gameRulesetTable} (name, max_points, max_team_size),
                 ${pointRulesetTable} (id, name, generation,
                     ${pointRuleTable} (pokemon_id, value))`
             )
@@ -233,7 +227,11 @@ const Game = ({ game }: { game: string }) => {
             .returns<
                 {
                     name: string;
-                    [gameRulesetTable]: { name: string; rules: {} };
+                    [gameRulesetTable]: {
+                        name: string;
+                        max_points: number;
+                        max_team_size: number;
+                    };
                     [pointRulesetTable]: {
                         id: string;
                         name: string;
@@ -250,7 +248,11 @@ const Game = ({ game }: { game: string }) => {
         if (error) return console.error(error);
         if (!data) return console.log("No data received!");
         setGameName(data.name);
-        setGameRuleset(data[gameRulesetTable]);
+        setGameRuleset({
+            name: data[gameRulesetTable].name,
+            maxPoints: data[gameRulesetTable].max_points,
+            maxTeamSize: data[gameRulesetTable].max_team_size,
+        });
         const valueByPokemonID = data[pointRulesetTable][
             pointRuleTable
         ].reduce<{
@@ -285,7 +287,7 @@ const Game = ({ game }: { game: string }) => {
 
     const fetchPokemonByPlayer = async (
         game: string,
-        pointRuleset: RulesetInfo,
+        pointRuleset: PointRulesetInfo,
         openAll?: boolean
     ) => {
         let { data, error } = await supabase
@@ -394,10 +396,10 @@ const Game = ({ game }: { game: string }) => {
         const ids = Object.keys(playerNameByID);
         const filteredForLimits = ids.filter((id) => {
             const hasPoints =
-                totalByID[id] < (gameRuleset.rules.maxPoints as number);
+                totalByID[id] < gameRuleset.maxPoints;
             const enoughRoom =
                 (pokemonByPlayerID[id] ?? []).length <
-                (gameRuleset.rules.maxTeamSize as number);
+                (gameRuleset.maxTeamSize);
             return hasPoints && enoughRoom;
         });
 
@@ -452,51 +454,51 @@ const Game = ({ game }: { game: string }) => {
 
     const selectPokemon = getIsMyTurn()
         ? async (pokemon: Pokemon) => {
-              if (!session)
-                  return notifications.show({
-                      color: "red",
-                      title: "Not Logged In",
-                      message: "You need to be logged in! How did you do this?",
-                  });
+            if (!session)
+                return notifications.show({
+                    color: "red",
+                    title: "Not Logged In",
+                    message: "You need to be logged in! How did you do this?",
+                });
 
-              const value = pointRuleset.valueByPokemonID[pokemon.data.id];
-              if (value === 0)
-                  return notifications.show({
-                      color: "red",
-                      title: "Banned Pokemon",
-                      message: `${pokemon.data.name} is a banned Pokemon!`,
-                  });
+            const value = pointRuleset.valueByPokemonID[pokemon.data.id];
+            if (value === 0)
+                return notifications.show({
+                    color: "red",
+                    title: "Banned Pokemon",
+                    message: `${pokemon.data.name} is a banned Pokemon!`,
+                });
 
-              const currentPointTotal = getPointTotal(
-                  session.user.id,
-                  pokemonByPlayerID,
-                  pointRuleset.valueByPokemonID
-              );
-              if (currentPointTotal + value > gameRuleset.rules.maxPoints)
-                  return notifications.show({
-                      color: "red",
-                      title: "You don't have enough points",
-                      message: `${pokemon.data.name} is worth too many points!`,
-                  });
+            const currentPointTotal = getPointTotal(
+                session.user.id,
+                pokemonByPlayerID,
+                pointRuleset.valueByPokemonID
+            );
+            if (currentPointTotal + value > gameRuleset.maxPoints)
+                return notifications.show({
+                    color: "red",
+                    title: "You don't have enough points",
+                    message: `${pokemon.data.name} is worth too many points!`,
+                });
 
-              const { error } = await supabase.from(gameSelectionTable).insert([
-                  {
-                      game,
-                      pokemon_id: pokemon.data.id,
-                      player: session.user.id,
-                  },
-              ]);
-              if (error)
-                  return notifications.show({
-                      color: "red",
-                      title: "Couldn't Select Pokemon",
-                      message: `${error.message}`,
-                  });
-              notifications.show({
-                  title: "Added your selection",
-                  message: `You have added ${pokemon.data.name} to your team`,
-              });
-          }
+            const { error } = await supabase.from(gameSelectionTable).insert([
+                {
+                    game,
+                    pokemon_id: pokemon.data.id,
+                    player: session.user.id,
+                },
+            ]);
+            if (error)
+                return notifications.show({
+                    color: "red",
+                    title: "Couldn't Select Pokemon",
+                    message: `${error.message}`,
+                });
+            notifications.show({
+                title: "Added your selection",
+                message: `You have added ${pokemon.data.name} to your team`,
+            });
+        }
         : undefined;
 
     return (
@@ -521,7 +523,7 @@ const Game = ({ game }: { game: string }) => {
                         <Text>Game isn't accepting anymore players</Text>
                     )
                 )}
-                <Title order={3}>
+                <Title order={4}>
                     Game Ruleset:{" "}
                     <Text
                         inherit
@@ -532,13 +534,9 @@ const Game = ({ game }: { game: string }) => {
                         {gameRuleset.name}
                     </Text>
                 </Title>
-                <Stack>
-                    {Object.entries(gameRuleset.rules).map(([k, v]) => (
-                        <Text key={k}>
-                            {k}: {JSON.stringify(v)}
-                        </Text>
-                    ))}
-                </Stack>
+                <Text>
+                    Max Points: {gameRuleset.maxPoints}, Max Team Size: {gameRuleset.maxTeamSize}
+                </Text>
                 <Title order={3}>
                     Point Ruleset:{" "}
                     <Anchor component={Link} to={`/ruleset/${pointRuleset.id}`}>
@@ -562,7 +560,6 @@ const Game = ({ game }: { game: string }) => {
                         <Stack align="left" ta="left">
                             <Title>Make a selection</Title>
                             <PokemonSelector
-                                generation={pointRuleset.generation}
                                 valueByPokemonID={pointRuleset.valueByPokemonID}
                                 onSelect={selectPokemon}
                             />
@@ -588,7 +585,7 @@ const Game = ({ game }: { game: string }) => {
                                 isMinimal={isMinimal}
                                 playerNameByID={playerNameByID}
                                 valueByPokemonID={pointRuleset.valueByPokemonID}
-                                maxPoints={gameRuleset.rules.maxPoints}
+                                maxPoints={gameRuleset.maxPoints}
                             />
                         </Stack>
                     </Grid.Col>

@@ -21,9 +21,9 @@ import { useClipboard } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 
 export type CardOnClick = (pokemon: Pokemon) => void;
-const defaultCardOnClick = (pokemon: Pokemon, generation: number) =>
+const defaultCardOnClick = (pokemon: Pokemon) =>
     window.open(
-        `https://www.smogon.com/dex/${getGenerationName(generation)}/pokemon/${pokemon.data.name}/`
+        `https://www.smogon.com/dex/${getGenerationName(pokemon.data.gen)}/pokemon/${pokemon.data.name}/`
     );
 
 export const BasicStatDisplay = ({ pokemon }: { pokemon: Pokemon }) => {
@@ -67,11 +67,9 @@ const copyID = (pokemon: Pokemon, clipboard: any) => {
 };
 export const PokemonCard = ({
     pokemon,
-    generation,
     onClick,
 }: {
     pokemon: Pokemon;
-    generation: number;
     onClick?: CardOnClick;
 }) => {
     const onCardClick = onClick || defaultCardOnClick;
@@ -90,7 +88,7 @@ export const PokemonCard = ({
                 mah={100}
                 fit="contain"
                 radius={15}
-                onClick={(_) => onCardClick(pokemon, generation)}
+                onClick={(_) => onCardClick(pokemon)}
                 className={[classes.pointer, classes.glow].join(" ")}
             />
             <Tooltip label="Click to copy ID" position="bottom">
@@ -160,11 +158,9 @@ export const BaseStatDisplay = ({ pokemon }: { pokemon: Pokemon }) => {
 
 export const PokemonPill = ({
     pokemon,
-    generation,
     onClick,
 }: {
     pokemon: Pokemon;
-    generation: number;
     onClick?: CardOnClick;
 }) => {
     const onCardClick = onClick || defaultCardOnClick;
@@ -175,7 +171,7 @@ export const PokemonPill = ({
     return (
         <Badge
             className={classes.pointer}
-            onClick={(_) => onCardClick(pokemon, generation)}
+            onClick={(_) => onCardClick(pokemon)}
             color={primaryColor}
             style={{
                 border: "2px solid " + secondaryColor,
