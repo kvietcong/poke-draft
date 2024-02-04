@@ -17,6 +17,8 @@ import {
 } from "@mantine/core";
 import getGenerationName from "@/util/GenerationName";
 import { Pokemon } from "@/types";
+import { useClipboard } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
 
 export type CardOnClick = (pokemon: Pokemon) => void;
 const defaultCardOnClick = (pokemon: Pokemon, generation: number) =>
@@ -60,6 +62,9 @@ export const PokemonTooltip = ({
     </Tooltip>
 );
 
+const copyID = (pokemon: Pokemon, clipboard: any) => {
+    clipboard.copy(pokemon.data.id);
+};
 export const PokemonCard = ({
     pokemon,
     generation,
@@ -70,16 +75,10 @@ export const PokemonCard = ({
     onClick?: CardOnClick;
 }) => {
     const onCardClick = onClick || defaultCardOnClick;
+    const clipboard = useClipboard({ timeout: 500 });
+
     return (
-        <Card
-            radius="lg"
-            withBorder
-            w={150}
-            mih={150}
-            padding={20}
-            onClick={(_) => onCardClick(pokemon, generation)}
-            className={classes.hoverPointer}
-        >
+        <Card radius="lg" withBorder w={150} mih={150} padding={20}>
             <Image
                 src={pokemon.sprite.url}
                 style={{
@@ -90,8 +89,25 @@ export const PokemonCard = ({
                 w="100%"
                 mah={100}
                 fit="contain"
+                radius={15}
+                onClick={(_) => onCardClick(pokemon, generation)}
+                className={[classes.pointer, classes.glow].join(" ")}
             />
-            <Text ta="center">{pokemon.data.name}</Text>
+            <Tooltip label="Click to copy ID" position="bottom">
+                <Text
+                    ta="center"
+                    className={classes.pointer}
+                    onClick={() => {
+                        copyID(pokemon, clipboard);
+                        notifications.show({
+                            title: "Copy",
+                            message: "You copied the Pokemon ID",
+                        });
+                    }}
+                >
+                    {pokemon.data.name}
+                </Text>
+            </Tooltip>
             {pokemon.data.types.map((type) => (
                 <Badge key={type} m={1} w={100} color={getTypeColor(type)}>
                     {type}
@@ -158,7 +174,7 @@ export const PokemonPill = ({
     );
     return (
         <Badge
-            className={classes.hoverPointer}
+            className={classes.pointer}
             onClick={(_) => onCardClick(pokemon, generation)}
             color={primaryColor}
             style={{

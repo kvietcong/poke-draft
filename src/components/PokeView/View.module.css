@@ -1,8 +1,12 @@
-.hoverPointer {
+.pointer:hover {
+    cursor: pointer;
+}
+
+.glow {
     transition: all 0.2s ease-in-out;
 }
 
-.hoverPointer:hover {
-    cursor: pointer;
-    box-shadow: 0px 0px 5px 5px var(--mantine-color-default-hover);
+.glow:hover {
+    background: var(--mantine-color-default-hover);
+    box-shadow: 0px 0px 10px 10px var(--mantine-color-default-hover);
 }
