@@ -327,8 +327,8 @@ export const RulesetView = ({ ruleset }: { ruleset: number | string }) => {
                             open.length
                                 ? []
                                 : Object.values(rules)
-                                    .map((x) => x[0])
-                                    .filter((x) => x != "0")
+                                      .map((x) => x[0])
+                                      .filter((x) => x != "0")
                         )
                     }
                 >

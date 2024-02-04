@@ -1,7 +1,7 @@
 import "@mantine/core/styles.css";
-import '@mantine/notifications/styles.css';
+import "@mantine/notifications/styles.css";
 import { MantineProvider } from "@mantine/core";
-import { Notifications } from '@mantine/notifications';
+import { Notifications } from "@mantine/notifications";
 import { Router } from "./Router";
 import { theme } from "./theme";
 
@@ -39,7 +39,7 @@ export default function App() {
     return (
         <AppContext.Provider value={{ session, setSession }}>
             <MantineProvider defaultColorScheme="auto" theme={theme}>
-                <Notifications autoClose={1800}/>
+                <Notifications autoClose={1800} />
                 <Router />
                 <SpeedInsights />
             </MantineProvider>

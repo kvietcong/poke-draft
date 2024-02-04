@@ -79,6 +79,7 @@ export const SelectionAccordion = ({
     selectionData,
     playerNameByID,
     valueByPokemonID,
+    maxPoints,
 }: {
     open: string[];
     setOpen: Dispatch<SetStateAction<string[]>>;
@@ -87,6 +88,7 @@ export const SelectionAccordion = ({
     selectionData: SelectionData;
     playerNameByID: { [id: string]: string };
     valueByPokemonID: ValueByPokemonID;
+    maxPoints: number;
 }) => {
     const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
     return (
@@ -100,12 +102,13 @@ export const SelectionAccordion = ({
                 <Accordion.Item key={playerID} value={playerID}>
                     <Accordion.Control>
                         {playerName}:{" "}
-                        {getPointTotal(
-                            playerID,
-                            selectionData,
-                            valueByPokemonID
-                        )}{" "}
-                        points used
+                        {maxPoints -
+                            getPointTotal(
+                                playerID,
+                                selectionData,
+                                valueByPokemonID
+                            )}{" "}
+                        points left
                     </Accordion.Control>
                     <Accordion.Panel>
                         {open && open.includes(playerID) ? (
@@ -399,9 +402,7 @@ const Game = ({ game }: { game: string }) => {
         });
 
         const lowestCount = Math.min(
-            ...filteredForLimits.map(
-                (id) => pokemonByPlayerID[id]?.length ?? 0
-            )
+            ...filteredForLimits.map((id) => pokemonByPlayerID[id]?.length ?? 0)
         );
         const filteredForRound = filteredForLimits.filter((id) => {
             const hasNotPickedThisRound =
@@ -444,7 +445,6 @@ const Game = ({ game }: { game: string }) => {
                 message: `${error.message}`,
             });
         notifications.show({
-            color: "red",
             title: "Game Joined",
             message: `Welcome to ${gameName}!`,
         });
@@ -452,39 +452,51 @@ const Game = ({ game }: { game: string }) => {
 
     const selectPokemon = getIsMyTurn()
         ? async (pokemon: Pokemon) => {
-            if (!session)
-                return notifications.show({
-                    color: "red",
-                    title: "Not Logged In",
-                    message: "You need to be logged in! How did you do this?",
-                });
+              if (!session)
+                  return notifications.show({
+                      color: "red",
+                      title: "Not Logged In",
+                      message: "You need to be logged in! How did you do this?",
+                  });
 
-            const value = pointRuleset.valueByPokemonID[pokemon.data.id];
-            if (value === 0)
-                return notifications.show({
-                    color: "red",
-                    title: "Failure",
-                    message: `${pokemon.data.name} is a banned Pokemon!`,
-                });
+              const value = pointRuleset.valueByPokemonID[pokemon.data.id];
+              if (value === 0)
+                  return notifications.show({
+                      color: "red",
+                      title: "Banned Pokemon",
+                      message: `${pokemon.data.name} is a banned Pokemon!`,
+                  });
 
-            const { error } = await supabase.from(gameSelectionTable).insert([
-                {
-                    game,
-                    pokemon_id: pokemon.data.id,
-                    player: session.user.id,
-                },
-            ]);
-            if (error)
-                return notifications.show({
-                    color: "red",
-                    title: "Couldn't Select Pokemon",
-                    message: `${error.message}`,
-                });
-            notifications.show({
-                title: "Added your selection",
-                message: `You have added ${pokemon.data.name} to your team`,
-            });
-        }
+              const currentPointTotal = getPointTotal(
+                  session.user.id,
+                  pokemonByPlayerID,
+                  pointRuleset.valueByPokemonID
+              );
+              if (currentPointTotal + value > gameRuleset.rules.maxPoints)
+                  return notifications.show({
+                      color: "red",
+                      title: "You don't have enough points",
+                      message: `${pokemon.data.name} is worth too many points!`,
+                  });
+
+              const { error } = await supabase.from(gameSelectionTable).insert([
+                  {
+                      game,
+                      pokemon_id: pokemon.data.id,
+                      player: session.user.id,
+                  },
+              ]);
+              if (error)
+                  return notifications.show({
+                      color: "red",
+                      title: "Couldn't Select Pokemon",
+                      message: `${error.message}`,
+                  });
+              notifications.show({
+                  title: "Added your selection",
+                  message: `You have added ${pokemon.data.name} to your team`,
+              });
+          }
         : undefined;
 
     return (
@@ -535,6 +547,7 @@ const Game = ({ game }: { game: string }) => {
                         </Text>
                     </Anchor>
                 </Title>
+                <Text>(Scroll down to see point ruleset board)</Text>
                 {currentTurnPlayerID ? (
                     <Title order={3}>
                         {playerNameByID[currentTurnPlayerID]}'s Turn To Pick
@@ -544,7 +557,7 @@ const Game = ({ game }: { game: string }) => {
                 ) : (
                     <Title>Drafting is Complete</Title>
                 )}
-                <Grid>
+                <Grid mih="100vh">
                     <Grid.Col span={3}>
                         <Stack align="left" ta="left">
                             <Title>Make a selection</Title>
@@ -575,6 +588,7 @@ const Game = ({ game }: { game: string }) => {
                                 isMinimal={isMinimal}
                                 playerNameByID={playerNameByID}
                                 valueByPokemonID={pointRuleset.valueByPokemonID}
+                                maxPoints={gameRuleset.rules.maxPoints}
                             />
                         </Stack>
                     </Grid.Col>
