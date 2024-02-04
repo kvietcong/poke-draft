@@ -1,4 +1,5 @@
 import classes from "./View.module.css";
+import appClasses from "@/App.module.css";
 import { ReactNode } from "react";
 import { getTypeColor } from "@/util/PokemonColors";
 import { getStatColor } from "@/util/StatColors";
@@ -88,13 +89,13 @@ export const PokemonCard = ({
                 mah={100}
                 fit="contain"
                 radius={15}
-                onClick={(_) => onCardClick(pokemon)}
-                className={[classes.pointer, classes.glow].join(" ")}
+                onClick={() => onCardClick(pokemon)}
+                className={[appClasses.pointer, classes.glow].join(" ")}
             />
             <Tooltip label="Click to copy ID" position="bottom">
                 <Text
                     ta="center"
-                    className={classes.pointer}
+                    className={appClasses.pointer}
                     onClick={() => {
                         copyID(pokemon, clipboard);
                         notifications.show({
@@ -170,7 +171,7 @@ export const PokemonPill = ({
     );
     return (
         <Badge
-            className={classes.pointer}
+            className={appClasses.pointer}
             onClick={(_) => onCardClick(pokemon)}
             color={primaryColor}
             style={{

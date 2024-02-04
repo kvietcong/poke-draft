@@ -37,6 +37,7 @@ import {
     PokemonPill,
     PokemonTooltip,
 } from "@/components/PokeView/View";
+import getGenerationName from "@/util/GenerationName";
 
 type PointRule = [value: string, pokemonData: Pokemon[]];
 
@@ -117,6 +118,10 @@ export const RulesetView = ({
     const dex = useMemo(() => {
         return Dex.forGen(rulesetGeneration);
     }, [rulesetGeneration]);
+    const defaultCardOnClick = (pokemon: Pokemon) =>
+        window.open(
+            `https://www.smogon.com/dex/${getGenerationName(rulesetGeneration)}/pokemon/${pokemon.data.name}/`
+        );
 
     const nameFuzzySearcher = useMemo(() => {
         const names = rules.reduce<{ name: string; id: string }[]>(
@@ -328,7 +333,7 @@ export const RulesetView = ({
                 setOpen={setOpen}
                 isMinimal={isMinimal}
                 rules={filteredRules}
-                cardOnClick={cardOnClick}
+                cardOnClick={cardOnClick ?? defaultCardOnClick}
             />
             <Group pos="fixed" left={25} bottom={20} style={{ zIndex: 500 }}>
                 <Button
