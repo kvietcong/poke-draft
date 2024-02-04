@@ -32,6 +32,7 @@ import {
 import { pointRuleTable, pointRulesetTable } from "@/util/DatabaseTables";
 import { Pokemon } from "@/types";
 import {
+    CardOnClick,
     PokemonCard,
     PokemonPill,
     PokemonTooltip,
@@ -44,11 +45,13 @@ export const RulesetAccordion = ({
     rules,
     setOpen,
     isMinimal,
+    cardOnClick,
 }: {
     open?: string[];
     rules: PointRule[];
     setOpen?: Dispatch<SetStateAction<string[]>>;
     isMinimal?: boolean;
+    cardOnClick?: CardOnClick;
 }) => {
     const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
     return (
@@ -72,6 +75,7 @@ export const RulesetAccordion = ({
                                             <PokemonDisplay
                                                 key={pokemon.data.id}
                                                 pokemon={pokemon}
+                                                onClick={cardOnClick}
                                             />
                                         </PokemonTooltip>
                                     ))}
@@ -85,7 +89,13 @@ export const RulesetAccordion = ({
     );
 };
 
-export const RulesetView = ({ ruleset }: { ruleset: string }) => {
+export const RulesetView = ({
+    ruleset,
+    cardOnClick,
+}: {
+    ruleset: string;
+    cardOnClick?: CardOnClick;
+}) => {
     const [rules, setRules] = useState<PointRule[]>([]);
     const [rulesetName, setRulesetName] = useState<string>("");
     const [rulesetGeneration, setRulesetGeneration] = useState(1);
@@ -215,8 +225,7 @@ export const RulesetView = ({ ruleset }: { ruleset: string }) => {
             const key = value.toString();
             const pokemonID = toID(rawPokemonID);
             if (!accumulated[key]) accumulated[value] = [];
-            const data =
-                dex.species.getByID(pokemonID);
+            const data = dex.species.getByID(pokemonID);
             accumulated[key].push({
                 data: data,
                 sprite: Sprites.getDexPokemon(pokemonID, {
@@ -294,7 +303,8 @@ export const RulesetView = ({ ruleset }: { ruleset: string }) => {
                         <Autocomplete
                             label="Ability"
                             limit={5}
-                            data={dex.abilities.all()
+                            data={dex.abilities
+                                .all()
                                 .map((ability) => ability.name)}
                             value={abilityFilterText}
                             onChange={setAbilityFilterText}
@@ -318,6 +328,7 @@ export const RulesetView = ({ ruleset }: { ruleset: string }) => {
                 setOpen={setOpen}
                 isMinimal={isMinimal}
                 rules={filteredRules}
+                cardOnClick={cardOnClick}
             />
             <Group pos="fixed" left={25} bottom={20} style={{ zIndex: 500 }}>
                 <Button
@@ -326,8 +337,8 @@ export const RulesetView = ({ ruleset }: { ruleset: string }) => {
                             open.length
                                 ? []
                                 : Object.values(rules)
-                                    .map((x) => x[0])
-                                    .filter((x) => x != "0")
+                                      .map((x) => x[0])
+                                      .filter((x) => x != "0")
                         )
                     }
                 >

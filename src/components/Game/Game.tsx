@@ -6,9 +6,10 @@ import {
     useMemo,
     useContext,
 } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import supabase from "@/supabase";
 import {
+    gamePlayerOverrideTable,
     gamePlayerTable,
     gameRulesetTable,
     gameSelectionTable,
@@ -18,7 +19,6 @@ import {
 } from "@/util/DatabaseTables";
 import {
     Accordion,
-    Anchor,
     Button,
     Center,
     Checkbox,
@@ -34,6 +34,7 @@ import classes from "@/App.module.css";
 import { Pokemon } from "@/types";
 import {
     BasicStatDisplay,
+    CardOnClick,
     PokemonCard,
     PokemonPill,
     PokemonTooltip,
@@ -41,10 +42,16 @@ import {
 import { Dex, toID } from "@pkmn/dex";
 import { PokemonSprite, Sprites } from "@pkmn/img";
 import { Loading } from "../Loading/Loading";
-import { useDebouncedState } from "@mantine/hooks";
+import { useDebouncedState, useScrollIntoView } from "@mantine/hooks";
 import { AppContext } from "@/App";
 import { notifications } from "@mantine/notifications";
 import { RulesetView } from "../Ruleset/Ruleset";
+
+type GameRuleset = {
+    name: string;
+    maxPoints: number;
+    maxTeamSize: number;
+};
 
 type ValueByPokemonID = { [pokemonID: string]: number };
 const getPointLabel = (
@@ -79,6 +86,7 @@ export const SelectionAccordion = ({
     playerNameByID,
     valueByPokemonID,
     maxPoints,
+    overrideByPlayerID,
 }: {
     open: string[];
     setOpen: Dispatch<SetStateAction<string[]>>;
@@ -87,6 +95,7 @@ export const SelectionAccordion = ({
     playerNameByID: { [id: string]: string };
     valueByPokemonID: ValueByPokemonID;
     maxPoints: number;
+    overrideByPlayerID: { [id: string]: GameRuleset };
 }) => {
     const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
     return (
@@ -100,7 +109,8 @@ export const SelectionAccordion = ({
                 <Accordion.Item key={playerID} value={playerID}>
                     <Accordion.Control>
                         {playerName}:{" "}
-                        {maxPoints -
+                        {(overrideByPlayerID[playerID]?.maxPoints ??
+                            maxPoints) -
                             getPointTotal(
                                 playerID,
                                 selectionData,
@@ -137,11 +147,14 @@ export const SelectionAccordion = ({
 const PokemonSelector = ({
     valueByPokemonID,
     onSelect,
+    search,
+    setSearch,
 }: {
     valueByPokemonID: { [pokemonID: string]: number };
     onSelect?: (pokemon: Pokemon) => any;
+    search: string;
+    setSearch: (newValue: string) => void;
 }) => {
-    const [search, setSearch] = useDebouncedState("", 150);
     const pokemon = useMemo(() => {
         const data = Dex.species.get(search.trim());
         const pokemon = {
@@ -190,14 +203,16 @@ const Game = ({ game }: { game: string }) => {
     const [trigger, setTrigger] = useState(0);
 
     const [gameName, setGameName] = useState<string>("");
-    const [gameRuleset, setGameRuleset] = useState<{
-        name: string;
-        maxPoints: number;
-        maxTeamSize: number;
+    const [gameRuleset, setGameRuleset] = useState<GameRuleset>();
+    const [overrideByPlayerID, setOverrideByPlayerID] = useState<{
+        [id: string]: GameRuleset;
     }>();
 
     const [playerNameByID, setPlayerNameByID] = useState<{
         [id: string]: string;
+    }>();
+    const [playerPriorityByID, setPlayerPriorityByID] = useState<{
+        [id: string]: number;
     }>();
     const [pokemonByPlayerID, setPokemonByPlayerID] = useState<{
         [id: string]: Pokemon[];
@@ -213,6 +228,17 @@ const Game = ({ game }: { game: string }) => {
 
     const [open, setOpen] = useState<string[]>([]);
     const [isMinimal, setIsMinimal] = useState(false);
+
+    const { scrollIntoView: scrollToSelector, targetRef: selectionRef } =
+        useScrollIntoView<HTMLHeadingElement>();
+    const [search, setSearch] = useDebouncedState("", 150);
+    const cardOnClick: CardOnClick = (pokemon) => {
+        setSearch(pokemon.data.id);
+        scrollToSelector();
+    };
+
+    const { scrollIntoView: scrollToRuleset, targetRef: rulesetRef } =
+        useScrollIntoView<HTMLDivElement>();
 
     const fetchGame = async (game: string) => {
         let { data, error } = await supabase
@@ -272,9 +298,14 @@ const Game = ({ game }: { game: string }) => {
     const fetchPlayers = async (game: string) => {
         let { data, error } = await supabase
             .from(gamePlayerTable)
-            .select("player (id, display_name)")
+            .select("player (id, display_name), priority")
             .eq("game", game)
-            .returns<{ player: { id: string; display_name: string } }[]>();
+            .returns<
+                {
+                    player: { id: string; display_name: string };
+                    priority: number;
+                }[]
+            >();
         if (error) return console.error(error);
         if (!data) return console.log("No data received!");
         setPlayerNameByID(
@@ -283,6 +314,42 @@ const Game = ({ game }: { game: string }) => {
                 return acc;
             }, {})
         );
+        setPlayerPriorityByID(
+            data.reduce<{ [id: string]: number }>((acc, next) => {
+                acc[next.player.id] = next.priority;
+                return acc;
+            }, {})
+        );
+    };
+
+    const fetchOverrides = async (game: string) => {
+        let { data, error } = await supabase
+            .from(gamePlayerOverrideTable)
+            .select("player, game_ruleset (name, max_points, max_team_size)")
+            .eq("game", game)
+            .returns<
+                {
+                    player: string;
+                    game_ruleset: {
+                        name: string;
+                        max_points: number;
+                        max_team_size: number;
+                    };
+                }[]
+            >();
+        if (error) return console.error(error);
+        if (!data) return console.log("No data received!");
+        const newOverrideByPlayerID = data.reduce<{
+            [id: string]: GameRuleset;
+        }>((acc, next) => {
+            acc[next.player] = {
+                name: next.game_ruleset.name,
+                maxPoints: next.game_ruleset.max_points,
+                maxTeamSize: next.game_ruleset.max_team_size,
+            };
+            return acc;
+        }, {});
+        setOverrideByPlayerID(newOverrideByPlayerID);
     };
 
     const fetchPokemonByPlayer = async (
@@ -367,6 +434,10 @@ const Game = ({ game }: { game: string }) => {
     }, [game]);
 
     useEffect(() => {
+        fetchOverrides(game);
+    }, [game]);
+
+    useEffect(() => {
         if (!game) return;
         fetchGame(game);
         fetchPlayers(game);
@@ -377,7 +448,14 @@ const Game = ({ game }: { game: string }) => {
         fetchPokemonByPlayer(game, pointRuleset, true);
     }, [game, pointRuleset, trigger]);
 
-    if (!gameRuleset || !pointRuleset || !pokemonByPlayerID || !playerNameByID)
+    if (
+        !gameRuleset ||
+        !pointRuleset ||
+        !pokemonByPlayerID ||
+        !playerNameByID ||
+        !overrideByPlayerID ||
+        !playerPriorityByID
+    )
         return <Loading />;
 
     const getCurrentTurnPlayerID = () => {
@@ -395,11 +473,11 @@ const Game = ({ game }: { game: string }) => {
 
         const ids = Object.keys(playerNameByID);
         const filteredForLimits = ids.filter((id) => {
-            const hasPoints =
-                totalByID[id] < gameRuleset.maxPoints;
+            const rulesetForPlayer = overrideByPlayerID[id] ?? gameRuleset;
+            const hasPoints = totalByID[id] < rulesetForPlayer.maxPoints;
             const enoughRoom =
                 (pokemonByPlayerID[id] ?? []).length <
-                (gameRuleset.maxTeamSize);
+                rulesetForPlayer.maxTeamSize;
             return hasPoints && enoughRoom;
         });
 
@@ -412,6 +490,10 @@ const Game = ({ game }: { game: string }) => {
             return hasNotPickedThisRound;
         });
 
+        filteredForRound.sort(
+            (a, b) =>
+                (playerPriorityByID[b] ?? 0) - (playerPriorityByID[a] ?? 0)
+        );
         if (lowestCount % 2 == 1) filteredForRound.reverse();
 
         return filteredForRound?.[0];
@@ -454,52 +536,77 @@ const Game = ({ game }: { game: string }) => {
 
     const selectPokemon = getIsMyTurn()
         ? async (pokemon: Pokemon) => {
-            if (!session)
-                return notifications.show({
-                    color: "red",
-                    title: "Not Logged In",
-                    message: "You need to be logged in! How did you do this?",
-                });
+              if (!session)
+                  return notifications.show({
+                      color: "red",
+                      title: "Not Logged In",
+                      message: "You need to be logged in! How did you do this?",
+                  });
+              if (!(session.user.id in playerNameByID))
+                  return notifications.show({
+                      color: "red",
+                      title: "Not in the Game",
+                      message:
+                          "You need to be in the game! How did you do this?",
+                  });
 
-            const value = pointRuleset.valueByPokemonID[pokemon.data.id];
-            if (value === 0)
-                return notifications.show({
-                    color: "red",
-                    title: "Banned Pokemon",
-                    message: `${pokemon.data.name} is a banned Pokemon!`,
-                });
+              const value = pointRuleset.valueByPokemonID[pokemon.data.id];
+              if (value === 0)
+                  return notifications.show({
+                      color: "red",
+                      title: "Banned Pokemon",
+                      message: `${pokemon.data.name} is a banned Pokemon!`,
+                  });
 
-            const currentPointTotal = getPointTotal(
-                session.user.id,
-                pokemonByPlayerID,
-                pointRuleset.valueByPokemonID
-            );
-            if (currentPointTotal + value > gameRuleset.maxPoints)
-                return notifications.show({
-                    color: "red",
-                    title: "You don't have enough points",
-                    message: `${pokemon.data.name} is worth too many points!`,
-                });
+              const currentPointTotal = getPointTotal(
+                  session.user.id,
+                  pokemonByPlayerID,
+                  pointRuleset.valueByPokemonID
+              );
 
-            const { error } = await supabase.from(gameSelectionTable).insert([
-                {
-                    game,
-                    pokemon_id: pokemon.data.id,
-                    player: session.user.id,
-                },
-            ]);
-            if (error)
-                return notifications.show({
-                    color: "red",
-                    title: "Couldn't Select Pokemon",
-                    message: `${error.message}`,
-                });
-            notifications.show({
-                title: "Added your selection",
-                message: `You have added ${pokemon.data.name} to your team`,
-            });
-        }
+              const rulesetForPlayer =
+                  overrideByPlayerID[session.user.id] ?? gameRuleset;
+              if (currentPointTotal + value > rulesetForPlayer.maxPoints)
+                  return notifications.show({
+                      color: "red",
+                      title: "You don't have enough points",
+                      message: `${pokemon.data.name} is worth too many points!`,
+                  });
+
+              const { error } = await supabase.from(gameSelectionTable).insert([
+                  {
+                      game,
+                      pokemon_id: pokemon.data.id,
+                      player: session.user.id,
+                  },
+              ]);
+              if (error)
+                  return notifications.show({
+                      color: "red",
+                      title: "Couldn't Select Pokemon",
+                      message: `${error.message}`,
+                  });
+              notifications.show({
+                  title: "Added your selection",
+                  message: `You have added ${pokemon.data.name} to your team`,
+              });
+          }
         : undefined;
+
+    const Overrides = Object.entries(overrideByPlayerID)
+        .map(([id, override]) => {
+            const playerName = playerNameByID[id];
+            return (
+                playerName && (
+                    <Text key={id}>
+                        {playerName}: ({override.name}) Max Points:{" "}
+                        {override.maxPoints}, Max Team Size:{" "}
+                        {override.maxTeamSize}
+                    </Text>
+                )
+            );
+        })
+        .filter((x) => x);
 
     return (
         <Center>
@@ -533,19 +640,32 @@ const Game = ({ game }: { game: string }) => {
                     >
                         {gameRuleset.name}
                     </Text>
+                    <Text>
+                        Max Points: {gameRuleset.maxPoints}, Max Team Size:{" "}
+                        {gameRuleset.maxTeamSize}
+                    </Text>
                 </Title>
-                <Text>
-                    Max Points: {gameRuleset.maxPoints}, Max Team Size: {gameRuleset.maxTeamSize}
-                </Text>
+                {Overrides.length > 0 && (
+                    <>
+                        <Title order={4}>
+                            Game Ruleset Overrides:
+                            {Overrides}
+                        </Title>
+                    </>
+                )}
                 <Title order={3}>
                     Point Ruleset:{" "}
-                    <Anchor component={Link} to={`/ruleset/${pointRuleset.id}`}>
-                        <Text inherit component="span">
-                            {pointRuleset.name}
-                        </Text>
-                    </Anchor>
+                    <Text
+                        inherit
+                        variant="gradient"
+                        component="span"
+                        gradient={{ from: "pink", to: "yellow" }}
+                        onClick={() => scrollToRuleset()}
+                        className={classes.pointer}
+                    >
+                        {pointRuleset.name}
+                    </Text>
                 </Title>
-                <Text>(Scroll down to see point ruleset board)</Text>
                 {currentTurnPlayerID ? (
                     <Title order={3}>
                         {playerNameByID[currentTurnPlayerID]}'s Turn To Pick
@@ -558,10 +678,12 @@ const Game = ({ game }: { game: string }) => {
                 <Grid mih="100vh">
                     <Grid.Col span={3}>
                         <Stack align="left" ta="left">
-                            <Title>Make a selection</Title>
+                            <Title ref={selectionRef}>Make a selection</Title>
                             <PokemonSelector
                                 valueByPokemonID={pointRuleset.valueByPokemonID}
                                 onSelect={selectPokemon}
+                                search={search}
+                                setSearch={setSearch}
                             />
                         </Stack>
                     </Grid.Col>
@@ -586,12 +708,16 @@ const Game = ({ game }: { game: string }) => {
                                 playerNameByID={playerNameByID}
                                 valueByPokemonID={pointRuleset.valueByPokemonID}
                                 maxPoints={gameRuleset.maxPoints}
+                                overrideByPlayerID={overrideByPlayerID}
                             />
                         </Stack>
                     </Grid.Col>
                 </Grid>
-                <Divider />
-                <RulesetView ruleset={pointRuleset.id} />
+                <Divider ref={rulesetRef} />
+                <RulesetView
+                    ruleset={pointRuleset.id}
+                    cardOnClick={cardOnClick}
+                />
             </Stack>
         </Center>
     );

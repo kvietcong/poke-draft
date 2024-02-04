@@ -1,5 +1,5 @@
 import { AppContext } from "@/App";
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
@@ -8,15 +8,19 @@ import {
     Anchor,
     Button,
     Container,
+    Grid,
     Image,
     Stack,
     Text,
+    TextInput,
     Title,
     useMantineColorScheme,
 } from "@mantine/core";
 import classes from "@/App.module.css";
 import { Link } from "react-router-dom";
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle/ColorSchemeToggle";
+import { profileTable } from "@/util/DatabaseTables";
+import { notifications } from "@mantine/notifications";
 
 export const LoginView = () => {
     const { colorScheme } = useMantineColorScheme();
@@ -65,6 +69,48 @@ export const MyProfileView = () => {
             </Anchor>
         );
 
+    const [username, setUsername] = useState("There!");
+    const fetchUsername = async () => {
+        const { data, error } = await supabase
+            .from(profileTable)
+            .select("display_name")
+            .eq("id", session.user.id)
+            .single();
+        if (error)
+            return notifications.show({
+                color: "red",
+                title: "Couldn't get username",
+                message: error.message,
+            });
+        setUsername(data.display_name);
+    };
+
+    const [newUsername, setNewUsername] = useState("");
+    const changeName = async () => {
+        const newUsernameClean = newUsername.trim();
+        if (!newUsernameClean || newUsernameClean.length < 2)
+            return notifications.show({
+                color: "red",
+                title: "Invalid Username",
+                message: `You can't use "${newUsernameClean}" as your username`,
+            });
+        const { error } = await supabase
+            .from(profileTable)
+            .update({ display_name: newUsernameClean })
+            .eq("id", session.user.id);
+        if (error)
+            return notifications.show({
+                color: "red",
+                title: "Couldn't update username",
+                message: error.message,
+            });
+        setUsername(newUsernameClean);
+    };
+
+    useEffect(() => {
+        fetchUsername();
+    }, [session]);
+
     return (
         <>
             <Title className={classes.title} ta="center" mt={100}>
@@ -75,10 +121,25 @@ export const MyProfileView = () => {
                     component="span"
                     gradient={{ from: "pink", to: "yellow" }}
                 >
-                    {session.user.user_metadata.name || "There"}!
+                    {username}!
                 </Text>
             </Title>
             <Container ta="center" w="50%">
+                <Grid>
+                    <Grid.Col span={9}>
+                        <TextInput
+                            placeholder="Choose your new name!"
+                            value={newUsername}
+                            onChange={(e) => setNewUsername(e.target.value)}
+                            w="100%"
+                        />
+                    </Grid.Col>
+                    <Grid.Col span={3}>
+                        <Button w="100%" onClick={changeName}>
+                            Change Name
+                        </Button>
+                    </Grid.Col>
+                </Grid>
                 <Stack>
                     <ColorSchemeToggle />
                     <Button onClick={() => supabase.auth.signOut()}>

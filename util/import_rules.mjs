@@ -617,7 +617,7 @@ for (const [value, pokemonIDs] of Object.entries(pokemonIDsByValue)) {
         value: value,
         pokemon_id: id,
     }));
-    console.log(`Inserting ${value} pointers`, pokemonIDs)
+    console.log(`Inserting ${value} pointers`, pokemonIDs);
     const { error } = await supabase
         .from("point_rule")
         .upsert(toInsert, {
