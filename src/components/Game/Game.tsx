@@ -387,28 +387,31 @@ const Game = ({ game }: { game: string }) => {
             );
             return acc;
         }, {});
-        const lowestCount = Math.min(
-            ...Object.keys(playerNameByID).map(
-                (id) => pokemonByPlayerID[id]?.length ?? 0
-            )
-        );
+
         const ids = Object.keys(playerNameByID);
-        const filtered = ids.filter((id) => {
-            const hasNotPickedThisRound =
-                (pokemonByPlayerID[id]?.length ?? 0) == lowestCount;
+        const filteredForLimits = ids.filter((id) => {
             const hasPoints =
                 totalByID[id] < (gameRuleset.rules.maxPoints as number);
             const enoughRoom =
                 (pokemonByPlayerID[id] ?? []).length <
                 (gameRuleset.rules.maxTeamSize as number);
-            return hasPoints && hasNotPickedThisRound && enoughRoom;
+            return hasPoints && enoughRoom;
         });
-        filtered.sort((a, b) => {
-            // TODO: HAVE PRIORITY SORT
-            return 0;
+
+        const lowestCount = Math.min(
+            ...filteredForLimits.map(
+                (id) => pokemonByPlayerID[id]?.length ?? 0
+            )
+        );
+        const filteredForRound = filteredForLimits.filter((id) => {
+            const hasNotPickedThisRound =
+                (pokemonByPlayerID[id]?.length ?? 0) == lowestCount;
+            return hasNotPickedThisRound;
         });
-        console.log(filtered);
-        return filtered?.[0];
+
+        if (lowestCount % 2 == 1) filteredForRound.reverse();
+
+        return filteredForRound?.[0];
     };
     const currentTurnPlayerID = getCurrentTurnPlayerID();
 
