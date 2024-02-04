@@ -534,6 +534,15 @@ const Game = ({ game }: { game: string }) => {
         });
     };
 
+    const alreadyChosenPokemon = (pokemon: Pokemon): boolean => {
+        for (const id in pokemonByPlayerID) {
+            const pokemons = pokemonByPlayerID[id];
+            if (pokemons.map((p) => p.data.id).includes(pokemon.data.id))
+                return false;
+        }
+        return true;
+    };
+
     const selectPokemon = getIsMyTurn()
         ? async (pokemon: Pokemon) => {
               if (!session)
@@ -717,6 +726,7 @@ const Game = ({ game }: { game: string }) => {
                 <RulesetView
                     ruleset={pointRuleset.id}
                     cardOnClick={cardOnClick}
+                    extraRulePredicates={[alreadyChosenPokemon]}
                 />
             </Stack>
         </Center>

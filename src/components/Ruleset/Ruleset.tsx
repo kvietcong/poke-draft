@@ -93,9 +93,11 @@ export const RulesetAccordion = ({
 export const RulesetView = ({
     ruleset,
     cardOnClick,
+    extraRulePredicates,
 }: {
     ruleset: string;
     cardOnClick?: CardOnClick;
+    extraRulePredicates?: ((p: Pokemon) => boolean)[];
 }) => {
     const [rules, setRules] = useState<PointRule[]>([]);
     const [rulesetName, setRulesetName] = useState<string>("");
@@ -172,6 +174,7 @@ export const RulesetView = ({
             };
             predicates.push(abilityPredicate);
         }
+        if (extraRulePredicates) predicates.push(...extraRulePredicates);
         const doesPokemonMatch = (pokemon: Pokemon) =>
             predicates.every((predicate) => predicate(pokemon));
         const result = rules.reduce<PointRule[]>((acc, next) => {
@@ -187,6 +190,7 @@ export const RulesetView = ({
         willMatchAllTypes,
         nameFuzzySearcher,
         abilityFilterText,
+        extraRulePredicates,
     ]);
 
     const fetchRuleset = async (ruleset: number | string) => {
