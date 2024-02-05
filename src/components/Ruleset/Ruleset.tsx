@@ -288,17 +288,15 @@ export const RulesetView = ({
 
     if (!rulesetName || !rules) return <Loading />;
     const theMoves = Object.values(
-        dex.moves
-            .all()
-            .reduce<{
-                [id: string]: { value: string; label: string };
-            }>((acc, move) => {
-                acc[move.id] = {
-                    value: move.id,
-                    label: move.name,
-                };
-                return acc;
-            }, {})
+        dex.moves.all().reduce<{
+            [id: string]: { value: string; label: string };
+        }>((acc, move) => {
+            acc[move.id] = {
+                value: move.id,
+                label: move.name,
+            };
+            return acc;
+        }, {})
     );
 
     return (
@@ -399,8 +397,8 @@ export const RulesetView = ({
                             open.length
                                 ? []
                                 : Object.values(rules)
-                                    .map((x) => x[0])
-                                    .filter((x) => x != "0")
+                                      .map((x) => x[0])
+                                      .filter((x) => x != "0")
                         )
                     }
                 >

@@ -87,6 +87,7 @@ export const SelectionAccordion = ({
     valueByPokemonID,
     maxPoints,
     overrideByPlayerID,
+    playerPriorityByID,
 }: {
     open: string[];
     setOpen: Dispatch<SetStateAction<string[]>>;
@@ -96,6 +97,7 @@ export const SelectionAccordion = ({
     valueByPokemonID: ValueByPokemonID;
     maxPoints: number;
     overrideByPlayerID: { [id: string]: GameRuleset };
+    playerPriorityByID: { [id: string]: number };
 }) => {
     const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
     return (
@@ -105,41 +107,47 @@ export const SelectionAccordion = ({
             multiple={true}
             variant={isMinimal ? "filled" : "separated"}
         >
-            {Object.entries(playerNameByID).map(([playerID, playerName]) => (
-                <Accordion.Item key={playerID} value={playerID}>
-                    <Accordion.Control>
-                        {playerName}:{" "}
-                        {(overrideByPlayerID[playerID]?.maxPoints ??
-                            maxPoints) -
-                            getPointTotal(
-                                playerID,
-                                selectionData,
-                                valueByPokemonID
-                            )}{" "}
-                        points left
-                    </Accordion.Control>
-                    <Accordion.Panel>
-                        {open && open.includes(playerID) ? (
-                            <Group justify="center" ta="center">
-                                {selectionData[playerID]?.map((pokemon) => (
-                                    <PokemonTooltip
-                                        pokemon={pokemon}
-                                        key={pokemon.data.id}
-                                    >
-                                        <PokemonDisplay pokemon={pokemon} />
-                                        <Text>
-                                            {getPointLabel(
-                                                pokemon,
-                                                valueByPokemonID
-                                            )}
-                                        </Text>
-                                    </PokemonTooltip>
-                                )) || <Text>No Selections</Text>}
-                            </Group>
-                        ) : null}
-                    </Accordion.Panel>
-                </Accordion.Item>
-            ))}
+            {Object.entries(playerNameByID)
+                .sort(
+                    (a, b) =>
+                        (playerPriorityByID[b[0]] ?? 0) -
+                        (playerPriorityByID[a[0]] ?? 0)
+                )
+                .map(([playerID, playerName]) => (
+                    <Accordion.Item key={playerID} value={playerID}>
+                        <Accordion.Control>
+                            {playerName}:{" "}
+                            {(overrideByPlayerID[playerID]?.maxPoints ??
+                                maxPoints) -
+                                getPointTotal(
+                                    playerID,
+                                    selectionData,
+                                    valueByPokemonID
+                                )}{" "}
+                            points left
+                        </Accordion.Control>
+                        <Accordion.Panel>
+                            {open && open.includes(playerID) ? (
+                                <Group justify="center" ta="center">
+                                    {selectionData[playerID]?.map((pokemon) => (
+                                        <PokemonTooltip
+                                            pokemon={pokemon}
+                                            key={pokemon.data.id}
+                                        >
+                                            <PokemonDisplay pokemon={pokemon} />
+                                            <Text>
+                                                {getPointLabel(
+                                                    pokemon,
+                                                    valueByPokemonID
+                                                )}
+                                            </Text>
+                                        </PokemonTooltip>
+                                    )) || <Text>No Selections</Text>}
+                                </Group>
+                            ) : null}
+                        </Accordion.Panel>
+                    </Accordion.Item>
+                ))}
         </Accordion>
     );
 };
@@ -710,6 +718,7 @@ const Game = ({ game }: { game: string }) => {
                                 />
                             </Group>
                             <SelectionAccordion
+                                playerPriorityByID={playerPriorityByID}
                                 open={open}
                                 setOpen={setOpen}
                                 selectionData={pokemonByPlayerID}
