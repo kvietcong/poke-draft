@@ -21,6 +21,7 @@ import {
     Checkbox,
     Collapse,
     Autocomplete,
+    MultiSelect,
 } from "@mantine/core";
 import Fuse from "fuse.js";
 import { Loading } from "@/components/Loading/Loading";
@@ -117,13 +118,33 @@ export const RulesetView = ({
     const [scroll, scrollTo] = useWindowScroll();
     const [open, setOpen] = useState<string[]>([]);
 
-    const dex = useMemo(() => {
-        return Dex.forGen(rulesetGeneration);
-    }, [rulesetGeneration]);
+    const [movesFilter, setMovesFilter] = useState<string[]>([]);
+
     const defaultCardOnClick = (pokemon: Pokemon) =>
         window.open(
             `https://www.smogon.com/dex/${getGenerationName(rulesetGeneration)}/pokemon/${pokemon.data.name}/`
         );
+
+    const dex = useMemo(() => {
+        return Dex.forGen(rulesetGeneration);
+    }, [rulesetGeneration]);
+
+    const [movesByPokemon, setMovesByPokemon] = useState<{
+        [id: string]: string[];
+    }>({});
+    const fetchMovesByPokemon = async () => {
+        const newMovesByPokemon: { [id: string]: string[] } = {};
+        for (const p of dex.species.all()) {
+            newMovesByPokemon[p.id] = Object.keys(
+                (await dex.learnsets.getByID(p.id)).learnset ?? {}
+            );
+        }
+        setMovesByPokemon(newMovesByPokemon);
+    };
+
+    useEffect(() => {
+        fetchMovesByPokemon();
+    }, [dex]);
 
     const nameFuzzySearcher = useMemo(() => {
         const names = rules.reduce<{ name: string; id: string }[]>(
@@ -174,6 +195,16 @@ export const RulesetView = ({
             };
             predicates.push(abilityPredicate);
         }
+        if (movesFilter.length) {
+            const movesPredicate = (pokemon: Pokemon) => {
+                return movesFilter.every((move: string) =>
+                    movesByPokemon[pokemon.data.id]
+                        .map((move) => move.toLowerCase())
+                        .includes(move)
+                );
+            };
+            predicates.push(movesPredicate);
+        }
         if (extraRulePredicates) predicates.push(...extraRulePredicates);
         const doesPokemonMatch = (pokemon: Pokemon) =>
             predicates.every((predicate) => predicate(pokemon));
@@ -187,6 +218,7 @@ export const RulesetView = ({
         name,
         rules,
         types,
+        movesFilter,
         willMatchAllTypes,
         nameFuzzySearcher,
         abilityFilterText,
@@ -255,6 +287,19 @@ export const RulesetView = ({
     }, [ruleset, dex]);
 
     if (!rulesetName || !rules) return <Loading />;
+    const theMoves = Object.values(
+        dex.moves
+            .all()
+            .reduce<{
+                [id: string]: { value: string; label: string };
+            }>((acc, move) => {
+                acc[move.id] = {
+                    value: move.id,
+                    label: move.name,
+                };
+                return acc;
+            }, {})
+    );
 
     return (
         <>
@@ -319,6 +364,14 @@ export const RulesetView = ({
                             onChange={setAbilityFilterText}
                         />
                     </Group>
+                    <MultiSelect
+                        searchable
+                        data={theMoves}
+                        value={movesFilter}
+                        onChange={setMovesFilter}
+                        label="Moves"
+                        placeholder="Filter for a move (latest gen)"
+                    />
                     <Group>
                         <Text>Fuzzy search multiplier: </Text>
                         <Slider
@@ -346,8 +399,8 @@ export const RulesetView = ({
                             open.length
                                 ? []
                                 : Object.values(rules)
-                                      .map((x) => x[0])
-                                      .filter((x) => x != "0")
+                                    .map((x) => x[0])
+                                    .filter((x) => x != "0")
                         )
                     }
                 >
