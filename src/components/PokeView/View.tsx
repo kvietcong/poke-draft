@@ -180,7 +180,10 @@ export const PokemonPill = ({
                 boxShadow: "0px 0px 4px 1px " + secondaryColor,
             }}
         >
-            <Group gap={0}>
+            <Group
+                gap={0}
+                style={{ textShadow: "black 0 2px 8px", paddingRight: "5px" }}
+            >
                 <span style={{ ...pokemon.icon }} />
                 {pokemon.data.name}
             </Group>
