@@ -34,11 +34,11 @@ export const BasicStatDisplay = ({ pokemon }: { pokemon: Pokemon }) => {
         </Badge>
     ));
     return (
-        <Stack miw={250} gap={4}>
+        <Stack w={250} gap={4}>
             <BaseStatDisplay pokemon={pokemon}></BaseStatDisplay>
             <Group grow>{typeBadges}</Group>
-            <Text>
-                Abilities:{" "}
+            <Text ta="center" style={{ textWrap: "wrap" }}>
+                <strong>Abilities: </strong>
                 {Object.values(pokemon.data.abilities as object).join(", ")}
             </Text>
         </Stack>
