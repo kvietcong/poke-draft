@@ -22,7 +22,7 @@ import {
     Collapse,
     Autocomplete,
     MultiSelect,
-    Grid
+    Grid,
 } from "@mantine/core";
 import Fuse from "fuse.js";
 import { Loading } from "@/components/Loading/Loading";
@@ -122,9 +122,16 @@ export const RulesetView = ({
 
     const [movesFilter, setMovesFilter] = useState<string[]>([]);
 
-    const baseStatsLabels = ['HP', 'Attack', 'Defense', 'Sp. Attack', 'Sp. Defense', 'Speed'];
+    const baseStatsLabels = [
+        "HP",
+        "Attack",
+        "Defense",
+        "Sp. Attack",
+        "Sp. Defense",
+        "Speed",
+    ];
     const [baseStatsFilter, setBaseStatsFilter] = useState(
-      Object.fromEntries(baseStatsLabels.map((label) => [label, 0]))
+        Object.fromEntries(baseStatsLabels.map((label) => [label, 0]))
     );
 
     const defaultCardOnClick = (pokemon: Pokemon) =>
@@ -152,12 +159,13 @@ export const RulesetView = ({
     useEffect(() => {
         fetchMovesByPokemon();
     }, [dex]);
-    const handleBaseStatsFilterChange  = (label : string) => (newValue : number) => {
-        setBaseStatsFilter((prevValues) => ({
-          ...prevValues,
-          [label]: newValue,
-        }));
-      };
+    const handleBaseStatsFilterChange =
+        (label: string) => (newValue: number) => {
+            setBaseStatsFilter((prevValues) => ({
+                ...prevValues,
+                [label]: newValue,
+            }));
+        };
 
     const nameFuzzySearcher = useMemo(() => {
         const names = rules.reduce<{ name: string; id: string }[]>(
@@ -220,17 +228,21 @@ export const RulesetView = ({
         }
         if (Object.values(baseStatsFilter).some((value) => value > 0)) {
             const statAbbreviations: Map<string, StatID> = new Map([
-                ['hp', 'hp'],
-                ['attack', 'atk'],
-                ['defense', 'def'],
-                ['sp. attack', 'spa'],
-                ['sp. defense', 'spd'],
-                ['speed', 'spe'],
-              ]);
-            const baseStatsPredicate = (pokemon: Pokemon) => {            
-                return Object.entries(baseStatsFilter).every(([label, value]) => (
-                    value <= pokemon.data.baseStats[statAbbreviations.get(label.toLowerCase()) ?? 'hp']
-                ));
+                ["hp", "hp"],
+                ["attack", "atk"],
+                ["defense", "def"],
+                ["sp. attack", "spa"],
+                ["sp. defense", "spd"],
+                ["speed", "spe"],
+            ]);
+            const baseStatsPredicate = (pokemon: Pokemon) => {
+                return Object.entries(baseStatsFilter).every(
+                    ([label, value]) =>
+                        value <=
+                        pokemon.data.baseStats[
+                            statAbbreviations.get(label.toLowerCase()) ?? "hp"
+                        ]
+                );
             };
             predicates.push(baseStatsPredicate);
         }
@@ -400,31 +412,31 @@ export const RulesetView = ({
                         label="Moves"
                         placeholder="Filter for a move (latest gen)"
                     />
-                                
+
                     <Stack>
-                    {baseStatsLabels.map((label) => (
-                        <Grid key={label}>
-                            <Grid.Col span={2}>
-                                <Text>{label}</Text>
-                            </Grid.Col>
-                            <Grid.Col span={1}>
-                                <Text>
-                                {baseStatsFilter[label]}
-                                </Text>
-                            </Grid.Col>
-                            <Grid.Col span={9}>
-                                <Slider
-                                color={getStatColor(label)}
-                                min={0}
-                                max={255}
-                                defaultValue={0}
-                                value={baseStatsFilter[label]}
-                                onChange={handleBaseStatsFilterChange(label)}
-                                size="xl"
-                                />
-                            </Grid.Col>
-                        </Grid>
-                    ))}
+                        {baseStatsLabels.map((label) => (
+                            <Grid key={label}>
+                                <Grid.Col span={2}>
+                                    <Text>{label}</Text>
+                                </Grid.Col>
+                                <Grid.Col span={1}>
+                                    <Text>{baseStatsFilter[label]}</Text>
+                                </Grid.Col>
+                                <Grid.Col span={9}>
+                                    <Slider
+                                        color={getStatColor(label)}
+                                        min={0}
+                                        max={255}
+                                        defaultValue={0}
+                                        value={baseStatsFilter[label]}
+                                        onChange={handleBaseStatsFilterChange(
+                                            label
+                                        )}
+                                        size="xl"
+                                    />
+                                </Grid.Col>
+                            </Grid>
+                        ))}
                     </Stack>
                     <Group>
                         <Text>Fuzzy search multiplier: </Text>

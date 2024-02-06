@@ -46,6 +46,7 @@ import { useDebouncedState, useScrollIntoView } from "@mantine/hooks";
 import { AppContext } from "@/App";
 import { notifications } from "@mantine/notifications";
 import { RulesetView } from "../Ruleset/Ruleset";
+import getGenerationName from "@/util/GenerationName";
 
 type GameRuleset = {
     name: string;
@@ -88,6 +89,7 @@ export const SelectionAccordion = ({
     maxPoints,
     overrideByPlayerID,
     playerPriorityByID,
+    cardOnClick,
 }: {
     open: string[];
     setOpen: Dispatch<SetStateAction<string[]>>;
@@ -98,6 +100,7 @@ export const SelectionAccordion = ({
     maxPoints: number;
     overrideByPlayerID: { [id: string]: GameRuleset };
     playerPriorityByID: { [id: string]: number };
+    cardOnClick?: CardOnClick;
 }) => {
     const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
     return (
@@ -134,7 +137,10 @@ export const SelectionAccordion = ({
                                             pokemon={pokemon}
                                             key={pokemon.data.id}
                                         >
-                                            <PokemonDisplay pokemon={pokemon} />
+                                            <PokemonDisplay
+                                                pokemon={pokemon}
+                                                onClick={cardOnClick}
+                                            />
                                             <Text>
                                                 {getPointLabel(
                                                     pokemon,
@@ -157,11 +163,13 @@ const PokemonSelector = ({
     onSelect,
     search,
     setSearch,
+    cardOnClick,
 }: {
     valueByPokemonID: { [pokemonID: string]: number };
     onSelect?: (pokemon: Pokemon) => any;
     search: string;
     setSearch: (newValue: string) => void;
+    cardOnClick?: CardOnClick;
 }) => {
     const pokemon = useMemo(() => {
         const data = Dex.species.get(search.trim());
@@ -183,7 +191,7 @@ const PokemonSelector = ({
             )}
             <Title>{getPointLabel(pokemon, valueByPokemonID)}</Title>
             <Center>
-                <PokemonCard pokemon={pokemon} />
+                <PokemonCard pokemon={pokemon} onClick={cardOnClick} />
             </Center>
             <Title>Stats</Title>
             <BasicStatDisplay pokemon={pokemon} />
@@ -240,7 +248,7 @@ const Game = ({ game }: { game: string }) => {
     const { scrollIntoView: scrollToSelector, targetRef: selectionRef } =
         useScrollIntoView<HTMLHeadingElement>();
     const [search, setSearch] = useDebouncedState("", 150);
-    const cardOnClick: CardOnClick = (pokemon) => {
+    const rulesetCardOnClick: CardOnClick = (pokemon) => {
         setSearch(pokemon.data.id);
         scrollToSelector();
     };
@@ -465,6 +473,11 @@ const Game = ({ game }: { game: string }) => {
         !playerPriorityByID
     )
         return <Loading />;
+
+    const selectCardOnClick = (pokemon: Pokemon) =>
+        window.open(
+            `https://www.smogon.com/dex/${getGenerationName(pointRuleset.generation)}/pokemon/${pokemon.data.name}/`
+        );
 
     const getCurrentTurnPlayerID = () => {
         if (Object.keys(playerNameByID).length < 2) return;
@@ -701,6 +714,7 @@ const Game = ({ game }: { game: string }) => {
                                 onSelect={selectPokemon}
                                 search={search}
                                 setSearch={setSearch}
+                                cardOnClick={selectCardOnClick}
                             />
                         </Stack>
                     </Grid.Col>
@@ -727,6 +741,7 @@ const Game = ({ game }: { game: string }) => {
                                 valueByPokemonID={pointRuleset.valueByPokemonID}
                                 maxPoints={gameRuleset.maxPoints}
                                 overrideByPlayerID={overrideByPlayerID}
+                                cardOnClick={selectCardOnClick}
                             />
                         </Stack>
                     </Grid.Col>
@@ -734,7 +749,7 @@ const Game = ({ game }: { game: string }) => {
                 <Divider ref={rulesetRef} />
                 <RulesetView
                     ruleset={pointRuleset.id}
-                    cardOnClick={cardOnClick}
+                    cardOnClick={rulesetCardOnClick}
                     extraRulePredicates={[alreadyChosenPokemon]}
                 />
             </Stack>
