@@ -174,12 +174,16 @@ export const PokemonPill = ({
             className={appClasses.pointer}
             onClick={(_) => onCardClick(pokemon)}
             color={primaryColor}
+            h={40}
             style={{
                 border: "2px solid " + secondaryColor,
                 boxShadow: "0px 0px 4px 1px " + secondaryColor,
             }}
         >
-            {pokemon.data.name}
+            <Group gap={0}>
+                <span style={{ ...pokemon.icon }} />
+                {pokemon.data.name}
+            </Group>
         </Badge>
     );
 };

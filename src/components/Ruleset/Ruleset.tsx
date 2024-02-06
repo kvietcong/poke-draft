@@ -41,6 +41,7 @@ import {
 } from "@/components/PokeView/View";
 import getGenerationName from "@/util/GenerationName";
 import getStatColor from "@/util/StatColors";
+import { getPokemon } from "@/util/Pokemon";
 
 type PointRule = [value: string, pokemonData: Pokemon[]];
 
@@ -75,9 +76,11 @@ export const RulesetAccordion = ({
                             {open && open.includes(value) ? (
                                 <Group justify="center">
                                     {pokemonData.map((pokemon) => (
-                                        <PokemonTooltip pokemon={pokemon}>
+                                        <PokemonTooltip
+                                            key={pokemon.data.id}
+                                            pokemon={pokemon}
+                                        >
                                             <PokemonDisplay
-                                                key={pokemon.data.id}
                                                 pokemon={pokemon}
                                                 onClick={cardOnClick}
                                             />
@@ -209,7 +212,6 @@ export const RulesetView = ({
         }
         if (abilityFilterText != "") {
             const abilityPredicate = (pokemon: Pokemon) => {
-                console.log(Object.values(pokemon.data.abilities as object));
                 return Object.values(pokemon.data.abilities as object).includes(
                     abilityFilterText
                 );
@@ -301,20 +303,11 @@ export const RulesetView = ({
             accumulated: { [value: string]: Pokemon[] },
             next: { value: number; pokemon_id: string }
         ) => {
-            const {
-                value,
-                pokemon_id: rawPokemonID,
-            }: { value: number; pokemon_id: string } = next;
+            const { value, pokemon_id }: { value: number; pokemon_id: string } =
+                next;
             const key = value.toString();
-            const pokemonID = toID(rawPokemonID);
             if (!accumulated[key]) accumulated[value] = [];
-            const data = dex.species.getByID(pokemonID);
-            accumulated[key].push({
-                data: data,
-                sprite: Sprites.getDexPokemon(pokemonID, {
-                    gen: "gen5ani",
-                }) as PokemonSprite,
-            });
+            accumulated[key].push(getPokemon(pokemon_id));
             return accumulated;
         };
         const pointRules: PointRule[] = Object.entries(

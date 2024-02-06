@@ -39,14 +39,15 @@ import {
     PokemonPill,
     PokemonTooltip,
 } from "@/components/PokeView/View";
-import { Dex, toID } from "@pkmn/dex";
-import { PokemonSprite, Sprites } from "@pkmn/img";
+import { Dex } from "@pkmn/dex";
+import { Icons, PokemonSprite, Sprites } from "@pkmn/img";
 import { Loading } from "../Loading/Loading";
 import { useDebouncedState, useScrollIntoView } from "@mantine/hooks";
 import { AppContext } from "@/App";
 import { notifications } from "@mantine/notifications";
 import { RulesetView } from "../Ruleset/Ruleset";
 import getGenerationName from "@/util/GenerationName";
+import { getPokemon, searchPokemon } from "@/util/Pokemon";
 
 type GameRuleset = {
     name: string;
@@ -172,14 +173,7 @@ const PokemonSelector = ({
     cardOnClick?: CardOnClick;
 }) => {
     const pokemon = useMemo(() => {
-        const data = Dex.species.get(search.trim());
-        const pokemon = {
-            data: data,
-            sprite: Sprites.getDexPokemon(data.id, {
-                gen: "gen5ani",
-            }) as PokemonSprite,
-        };
-        return pokemon;
+        return searchPokemon(search.trim());
     }, [search]);
 
     const PokemonInfo = (
@@ -379,19 +373,11 @@ const Game = ({ game }: { game: string }) => {
             .eq("game", game);
         if (error) return console.error(error);
         if (!data) return console.log("No data received!");
+        const dex = Dex.forGen(pointRuleset.generation);
         const newPokemonByPlayer = data.reduce<{ [id: string]: Pokemon[] }>(
             (acc, next) => {
                 const player = next.player;
-                const pokemonID = toID(next.pokemon_id);
-                const data = Dex.forGen(
-                    pointRuleset.generation
-                ).species.getByID(pokemonID);
-                const pokemon = {
-                    data: data,
-                    sprite: Sprites.getDexPokemon(pokemonID, {
-                        gen: "gen5ani",
-                    }) as PokemonSprite,
-                };
+                const pokemon = getPokemon(next.pokemon_id, dex);
                 if (player in acc) acc[player].push(pokemon);
                 else acc[player] = [pokemon];
                 return acc;
