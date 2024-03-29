@@ -9,17 +9,19 @@ import {
     Image,
     Text,
     Badge,
-    Group,
     Stack,
     Grid,
     Progress,
     Tooltip,
     FloatingPosition,
+    Group,
+    Flex,
 } from "@mantine/core";
 import getGenerationName from "@/util/GenerationName";
 import { Pokemon } from "@/types";
 import { useClipboard } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { Dex, TypeName } from "@pkmn/dex";
 
 export type CardOnClick = (pokemon: Pokemon) => void;
 const defaultCardOnClick = (pokemon: Pokemon) =>
@@ -27,12 +29,84 @@ const defaultCardOnClick = (pokemon: Pokemon) =>
         `https://www.smogon.com/dex/${getGenerationName(pokemon.data.gen)}/pokemon/${pokemon.data.name}/`
     );
 
+const getTypesByDamageMultiplier = (types: [TypeName] | [TypeName, TypeName]) => {
+    const manyDamageTypeByType = types.map(
+        (type) => Dex.types.get(type).damageTaken
+    );
+
+    const manyDamageMultiplierByType = [];
+    for (const damageTypeByType of manyDamageTypeByType) {
+        const damageMultiplierByType: { [type: string]: number } = {};
+        for (const [type, damageType] of Object.entries(damageTypeByType)) {
+            let damageMultiplier = 1;
+            if (damageType === 3) damageMultiplier = 0;
+            else if (damageType === 2) damageMultiplier = 0.5;
+            else if (damageType === 1) damageMultiplier = 2;
+            damageMultiplierByType[type] = damageMultiplier;
+        }
+        manyDamageMultiplierByType.push(damageMultiplierByType);
+    }
+
+    const allTypes = Dex.types.all().map((type) => type.name);
+    const finalDamageMultiplierByType = allTypes.reduce<{
+        [type: string]: number;
+    }>((acc, next) => {
+        acc[next] = 1;
+        return acc;
+    }, {});
+
+    for (const damageMultiplierByType of manyDamageMultiplierByType) {
+        for (const [type, damageMultiplier] of Object.entries(
+            damageMultiplierByType
+        )) {
+            finalDamageMultiplierByType[type] =
+                finalDamageMultiplierByType[type] * damageMultiplier;
+        }
+    }
+
+    const result: { [type: string]: string[] } = {};
+    for (const [type, damageMultiplier] of Object.entries(
+        finalDamageMultiplierByType
+    )) {
+        if (damageMultiplier === 1) continue;
+        if (damageMultiplier in result) result[damageMultiplier].push(type);
+        else result[damageMultiplier] = [type];
+    }
+
+    return result;
+};
+
 export const BasicStatDisplay = ({ pokemon }: { pokemon: Pokemon }) => {
     const typeBadges = pokemon.data.types.map((type) => (
         <Badge key={type} color={getTypeColor(type)}>
             {type}
         </Badge>
     ));
+
+    const effectivenessSection = Object.entries(
+        getTypesByDamageMultiplier(pokemon.data.types)
+    ).sort().reduce<JSX.Element[]>((acc, next) => {
+        const [damageMultiplier, types] = next;
+        if (!types.length) return acc;
+
+        const element = (
+            <div key={damageMultiplier}>
+                <Text ta="center" style={{ textWrap: "wrap" }}>
+                    <strong>{damageMultiplier}x Damage Taken: </strong>
+                </Text>
+                <Flex wrap="wrap" justify="center">
+                    {types.map((type) => (
+                        <Badge key={type} color={getTypeColor(type)}>
+                            {type}
+                        </Badge>
+                    ))}
+                </Flex>
+            </div>
+        );
+        acc.push(element);
+        return acc;
+    }, []);
+
     return (
         <Stack w={250} gap={4}>
             <BaseStatDisplay pokemon={pokemon}></BaseStatDisplay>
@@ -41,6 +115,7 @@ export const BasicStatDisplay = ({ pokemon }: { pokemon: Pokemon }) => {
                 <strong>Abilities: </strong>
                 {Object.values(pokemon.data.abilities as object).join(", ")}
             </Text>
+            {effectivenessSection}
         </Stack>
     );
 };
