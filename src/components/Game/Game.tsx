@@ -40,7 +40,6 @@ import {
     PokemonTooltip,
 } from "@/components/PokeView/View";
 import { Dex } from "@pkmn/dex";
-import { Icons, PokemonSprite, Sprites } from "@pkmn/img";
 import { Loading } from "../Loading/Loading";
 import { useDebouncedState, useScrollIntoView } from "@mantine/hooks";
 import { AppContext } from "@/App";
@@ -53,6 +52,13 @@ type GameRuleset = {
     name: string;
     maxPoints: number;
     maxTeamSize: number;
+};
+
+type PointRulesetInfo = {
+    id: string;
+    generation: number;
+    name: string;
+    valueByPokemonID: { [pokemonID: string]: number };
 };
 
 type ValueByPokemonID = { [pokemonID: string]: number };
@@ -160,20 +166,20 @@ export const SelectionAccordion = ({
 };
 
 const PokemonSelector = ({
-    valueByPokemonID,
+    pointRuleset,
     onSelect,
     search,
     setSearch,
     cardOnClick,
 }: {
-    valueByPokemonID: { [pokemonID: string]: number };
+    pointRuleset: PointRulesetInfo;
     onSelect?: (pokemon: Pokemon) => any;
     search: string;
     setSearch: (newValue: string) => void;
     cardOnClick?: CardOnClick;
 }) => {
     const pokemon = useMemo(() => {
-        return searchPokemon(search.trim());
+        return searchPokemon(search.trim(), pointRuleset.generation);
     }, [search]);
 
     const PokemonInfo = (
@@ -183,7 +189,9 @@ const PokemonSelector = ({
                     Select Pokemon
                 </Button>
             )}
-            <Title>{getPointLabel(pokemon, valueByPokemonID)}</Title>
+            <Title>
+                {getPointLabel(pokemon, pointRuleset.valueByPokemonID)}
+            </Title>
             <Center>
                 <PokemonCard pokemon={pokemon} onClick={cardOnClick} />
             </Center>
@@ -202,7 +210,11 @@ const PokemonSelector = ({
                 defaultValue={search}
                 onChange={(e) => setSearch(e.currentTarget.value)}
             />
-            {search.trim() && (pokemon.data.exists ? PokemonInfo : SearchError)}
+            {search.trim() &&
+                (pokemon.data.exists &&
+                    pokemon.data.gen <= pointRuleset.generation
+                    ? PokemonInfo
+                    : SearchError)}
         </>
     );
 };
@@ -228,12 +240,6 @@ const Game = ({ game }: { game: string }) => {
         [id: string]: Pokemon[];
     }>();
 
-    type PointRulesetInfo = {
-        id: string;
-        generation: number;
-        name: string;
-        valueByPokemonID: { [pokemonID: string]: number };
-    };
     const [pointRuleset, setPointRuleset] = useState<PointRulesetInfo>();
 
     const [open, setOpen] = useState<string[]>([]);
@@ -552,61 +558,61 @@ const Game = ({ game }: { game: string }) => {
 
     const selectPokemon = getIsMyTurn()
         ? async (pokemon: Pokemon) => {
-              if (!session)
-                  return notifications.show({
-                      color: "red",
-                      title: "Not Logged In",
-                      message: "You need to be logged in! How did you do this?",
-                  });
-              if (!(session.user.id in playerNameByID))
-                  return notifications.show({
-                      color: "red",
-                      title: "Not in the Game",
-                      message:
-                          "You need to be in the game! How did you do this?",
-                  });
+            if (!session)
+                return notifications.show({
+                    color: "red",
+                    title: "Not Logged In",
+                    message: "You need to be logged in! How did you do this?",
+                });
+            if (!(session.user.id in playerNameByID))
+                return notifications.show({
+                    color: "red",
+                    title: "Not in the Game",
+                    message:
+                        "You need to be in the game! How did you do this?",
+                });
 
-              const value = pointRuleset.valueByPokemonID[pokemon.data.id];
-              if (value === 0)
-                  return notifications.show({
-                      color: "red",
-                      title: "Banned Pokemon",
-                      message: `${pokemon.data.name} is a banned Pokemon!`,
-                  });
+            const value = pointRuleset.valueByPokemonID[pokemon.data.id];
+            if (value === 0)
+                return notifications.show({
+                    color: "red",
+                    title: "Banned Pokemon",
+                    message: `${pokemon.data.name} is a banned Pokemon!`,
+                });
 
-              const currentPointTotal = getPointTotal(
-                  session.user.id,
-                  pokemonByPlayerID,
-                  pointRuleset.valueByPokemonID
-              );
+            const currentPointTotal = getPointTotal(
+                session.user.id,
+                pokemonByPlayerID,
+                pointRuleset.valueByPokemonID
+            );
 
-              const rulesetForPlayer =
-                  overrideByPlayerID[session.user.id] ?? gameRuleset;
-              if (currentPointTotal + value > rulesetForPlayer.maxPoints)
-                  return notifications.show({
-                      color: "red",
-                      title: "You don't have enough points",
-                      message: `${pokemon.data.name} is worth too many points!`,
-                  });
+            const rulesetForPlayer =
+                overrideByPlayerID[session.user.id] ?? gameRuleset;
+            if (currentPointTotal + value > rulesetForPlayer.maxPoints)
+                return notifications.show({
+                    color: "red",
+                    title: "You don't have enough points",
+                    message: `${pokemon.data.name} is worth too many points!`,
+                });
 
-              const { error } = await supabase.from(gameSelectionTable).insert([
-                  {
-                      game,
-                      pokemon_id: pokemon.data.id,
-                      player: session.user.id,
-                  },
-              ]);
-              if (error)
-                  return notifications.show({
-                      color: "red",
-                      title: "Couldn't Select Pokemon",
-                      message: `${error.message}`,
-                  });
-              notifications.show({
-                  title: "Added your selection",
-                  message: `You have added ${pokemon.data.name} to your team`,
-              });
-          }
+            const { error } = await supabase.from(gameSelectionTable).insert([
+                {
+                    game,
+                    pokemon_id: pokemon.data.id,
+                    player: session.user.id,
+                },
+            ]);
+            if (error)
+                return notifications.show({
+                    color: "red",
+                    title: "Couldn't Select Pokemon",
+                    message: `${error.message}`,
+                });
+            notifications.show({
+                title: "Added your selection",
+                message: `You have added ${pokemon.data.name} to your team`,
+            });
+        }
         : undefined;
 
     const Overrides = Object.entries(overrideByPlayerID)
@@ -696,7 +702,7 @@ const Game = ({ game }: { game: string }) => {
                         <Stack align="left" ta="left">
                             <Title ref={selectionRef}>Make a selection</Title>
                             <PokemonSelector
-                                valueByPokemonID={pointRuleset.valueByPokemonID}
+                                pointRuleset={pointRuleset}
                                 onSelect={selectPokemon}
                                 search={search}
                                 setSearch={setSearch}

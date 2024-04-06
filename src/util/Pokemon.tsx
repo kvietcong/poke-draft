@@ -15,7 +15,8 @@ export const getPokemon = (id: string, dex?: ModdedDex): Pokemon => {
     return pokemon;
 };
 
-export const searchPokemon = (search: string, dex?: ModdedDex): Pokemon => {
+export const searchPokemon = (search: string, dex?: ModdedDex | number): Pokemon => {
+    if (typeof dex === "number") dex = Dex.forGen(dex)
     const data = (dex ?? Dex).species.get(search);
     const pokemon = {
         data: data,
