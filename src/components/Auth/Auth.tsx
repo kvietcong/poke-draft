@@ -19,7 +19,6 @@ import {
 import classes from "@/App.module.css";
 import { Link } from "react-router-dom";
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle/ColorSchemeToggle";
-import { profileTable } from "@/util/DatabaseTables";
 import { notifications } from "@mantine/notifications";
 import { changeUsername, fetchUsername } from "@/util/database";
 

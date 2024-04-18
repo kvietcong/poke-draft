@@ -5,6 +5,7 @@ import {
     SetStateAction,
     useMemo,
     useContext,
+    useRef,
 } from "react";
 import { useParams } from "react-router-dom";
 import supabase from "@/supabase";
@@ -14,7 +15,7 @@ import {
     Button,
     Center,
     Checkbox,
-    Divider,
+    Drawer,
     Grid,
     Group,
     Stack,
@@ -32,7 +33,7 @@ import {
     PokemonTooltip,
 } from "@/components/PokeView/View";
 import { Loading } from "../Loading/Loading";
-import { useDebouncedState, useScrollIntoView } from "@mantine/hooks";
+import { useDebouncedState, useDisclosure } from "@mantine/hooks";
 import { AppContext } from "@/App";
 import { notifications } from "@mantine/notifications";
 import { RulesetView } from "../Ruleset/Ruleset";
@@ -162,6 +163,11 @@ const PokemonSelector = ({
         return searchPokemon(search.trim(), pointRuleset.generation);
     }, [search]);
 
+    const inputRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        if (inputRef.current) inputRef.current.value = search;
+    }, [search]);
+
     const PokemonInfo = (
         <>
             {onSelect && (
@@ -169,7 +175,7 @@ const PokemonSelector = ({
                     Select Pokemon
                 </Button>
             )}
-            <Title>
+            <Title order={3}>
                 {getPointLabel(pokemon, pointRuleset.valueByPokemonID)}
             </Title>
             <Center>
@@ -186,14 +192,16 @@ const PokemonSelector = ({
     );
 
     let error_msg = null;
-    if (!pokemon.data.exists) error_msg = `Couldn't find ${search}`
-    else if (pokemon.data.gen > pointRuleset.generation) error_msg = `${pokemon.data.name} isn't in generation ${pointRuleset.generation}`
+    if (!pokemon.data.exists) error_msg = `Couldn't find ${search}`;
+    else if (pokemon.data.gen > pointRuleset.generation)
+        error_msg = `${pokemon.data.name} isn't in generation ${pointRuleset.generation}`;
 
     const SearchError = error_msg && <Title order={2}>{error_msg}</Title>;
 
     return (
         <>
             <TextInput
+                ref={inputRef}
                 label="Search for a Pokemon"
                 placeholder="Pokemon Name"
                 defaultValue={search}
@@ -211,6 +219,9 @@ const Game = ({ game }: { game: string }) => {
 
     const [gameName, setGameName] = useState<string>("");
 
+    const [isRulesetOpened, { open: showRuleset, close: hideRuleset }] =
+        useDisclosure(false);
+
     const [playerInfoByID, setPlayerInfoByID] = useState<{
         [id: string]: PlayerInfo;
     }>();
@@ -224,16 +235,14 @@ const Game = ({ game }: { game: string }) => {
     const [open, setOpen] = useState<string[]>([]);
     const [isMinimal, setIsMinimal] = useState(false);
 
-    const { scrollIntoView: scrollToSelector, targetRef: selectionRef } =
-        useScrollIntoView<HTMLHeadingElement>();
     const [search, setSearch] = useDebouncedState("", 150);
     const rulesetCardOnClick: CardOnClick = (pokemon) => {
         setSearch(pokemon.data.id);
-        scrollToSelector();
+        hideRuleset();
+        window.document
+            .getElementById("selection")
+            ?.scrollIntoView({ behavior: "smooth" });
     };
-
-    const { scrollIntoView: scrollToRuleset, targetRef: rulesetRef } =
-        useScrollIntoView<HTMLDivElement>();
 
     useEffect(() => {
         const select = supabase
@@ -355,6 +364,8 @@ const Game = ({ game }: { game: string }) => {
         return filteredForRound?.[0];
     };
     const currentTurnPlayerID = getCurrentTurnPlayerID();
+    const doesGameHavePlayers = Object.keys(playerInfoByID).length > 1;
+    const isDraftingFinished = !currentTurnPlayerID && doesGameHavePlayers;
 
     const getIsMyTurn = (): boolean => {
         if (!session) return false;
@@ -388,15 +399,6 @@ const Game = ({ game }: { game: string }) => {
             title: "Game Joined",
             message: `Welcome to ${gameName}!`,
         });
-    };
-
-    const alreadyChosenPokemon = (pokemon: Pokemon): boolean => {
-        for (const id in pokemonByPlayerID) {
-            const pokemons = pokemonByPlayerID[id];
-            if (pokemons.map((p) => p.data.id).includes(pokemon.data.id))
-                return false;
-        }
-        return true;
     };
 
     const selectPokemon = getIsMyTurn()
@@ -457,96 +459,137 @@ const Game = ({ game }: { game: string }) => {
         }
         : undefined;
 
+    const alreadyChosenPokemon = (pokemon: Pokemon): boolean => {
+        for (const id in pokemonByPlayerID) {
+            const pokemons = pokemonByPlayerID[id];
+            if (pokemons.map((p) => p.data.id).includes(pokemon.data.id))
+                return false;
+        }
+        return true;
+    };
+
     return (
-        <Center>
-            <Stack justify="center" ta="center" w="80%">
-                <Title className={classes.title} ta="center">
-                    Game:{" "}
-                    <Text
-                        inherit
-                        variant="gradient"
-                        component="span"
-                        gradient={{ from: "pink", to: "yellow" }}
-                    >
-                        {gameName}
-                    </Text>
-                </Title>
-                {getIsJoinable() ? (
-                    <Button onClick={joinGame}>Join Game</Button>
-                ) : (
-                    session &&
-                    !(session.user.id in playerInfoByID) && (
-                        <Text>Game isn't accepting anymore players</Text>
-                    )
-                )}
-                <Title order={3}>
-                    Point Ruleset:{" "}
-                    <Text
-                        inherit
-                        variant="gradient"
-                        component="span"
-                        gradient={{ from: "pink", to: "yellow" }}
-                        onClick={() => scrollToRuleset()}
-                        className={classes.pointer}
-                    >
-                        {pointRuleset.name}
-                    </Text>
-                </Title>
-                {currentTurnPlayerID ? (
-                    <Title order={3}>
-                        {playerInfoByID[currentTurnPlayerID].name}'s Turn To
-                        Pick
-                    </Title>
-                ) : Object.keys(playerInfoByID).length < 2 ? (
-                    <Title>Game hasn't started</Title>
-                ) : (
-                    <Title>Drafting is Complete</Title>
-                )}
-                <Grid mih="100vh">
-                    <Grid.Col span={3}>
-                        <Stack align="left" ta="left">
-                            <Title ref={selectionRef}>Make a selection</Title>
-                            <PokemonSelector
-                                pointRuleset={pointRuleset}
-                                onSelect={selectPokemon}
-                                search={search}
-                                setSearch={setSearch}
-                            />
-                        </Stack>
-                    </Grid.Col>
-                    <Grid.Col ta="right" span={9}>
-                        <Stack>
-                            <Title>Player Selections</Title>
-                            <Group justify="right">
-                                <Text>Display Options:</Text>
-                                <Checkbox
-                                    checked={isMinimal}
-                                    onChange={(e) =>
-                                        setIsMinimal(e.currentTarget.checked)
-                                    }
-                                    label="Minimal View?"
-                                />
-                            </Group>
-                            <SelectionAccordion
-                                playerInfoByID={playerInfoByID}
-                                open={open}
-                                setOpen={setOpen}
-                                selectionData={pokemonByPlayerID}
-                                isMinimal={isMinimal}
-                                valueByPokemonID={pointRuleset.valueByPokemonID}
-                                cardOnClick={smogonOnClick}
-                            />
-                        </Stack>
-                    </Grid.Col>
-                </Grid>
-                <Divider ref={rulesetRef} />
+        <>
+            <Drawer
+                opened={isRulesetOpened}
+                onClose={hideRuleset}
+                title="Point Ruleset"
+                radius="md"
+                size="75%"
+                keepMounted={true}
+                position="right"
+            >
                 <RulesetView
-                    ruleset={pointRuleset.id}
+                    ruleset={pointRuleset?.id ?? ""}
                     cardOnClick={rulesetCardOnClick}
                     extraRulePredicates={[alreadyChosenPokemon]}
                 />
-            </Stack>
-        </Center>
+            </Drawer>
+            <Button
+                right="0"
+                top="50%"
+                style={{ transform: "translate(40%) rotate(-90deg)" }}
+                pos="fixed"
+                onClick={showRuleset}
+            >
+                See Point Ruleset
+            </Button>
+            <Center>
+                <Stack justify="center" ta="center" w="80%">
+                    <Title className={classes.title} ta="center">
+                        Game:{" "}
+                        <Text
+                            inherit
+                            variant="gradient"
+                            component="span"
+                            gradient={{ from: "pink", to: "yellow" }}
+                        >
+                            {gameName}
+                        </Text>
+                    </Title>
+                    {getIsJoinable() ? (
+                        <Button onClick={joinGame}>Join Game</Button>
+                    ) : (
+                        session &&
+                        !(session.user.id in playerInfoByID) && (
+                            <Text>Game isn't accepting anymore players</Text>
+                        )
+                    )}
+                    <Title order={3}>
+                        Point Ruleset:{" "}
+                        <Text
+                            inherit
+                            variant="gradient"
+                            component="span"
+                            gradient={{ from: "pink", to: "yellow" }}
+                            onClick={showRuleset}
+                            className={classes.pointer}
+                        >
+                            {pointRuleset.name}
+                        </Text>
+                    </Title>
+                    {currentTurnPlayerID ? (
+                        <Title order={3}>
+                            {playerInfoByID[currentTurnPlayerID].name}'s Turn To
+                            Pick
+                        </Title>
+                    ) : isDraftingFinished ? (
+                        <Title>Drafting is Complete</Title>
+                    ) : (
+                        <Title>Game hasn't started</Title>
+                    )}
+                    <Grid mih="100vh">
+                        <Grid.Col span={3}>
+                            <Stack align="left" ta="left">
+                                <Title id="selection">Make a selection</Title>
+                                <Button onClick={showRuleset}>
+                                    See Point Ruleset
+                                </Button>
+                                <PokemonSelector
+                                    pointRuleset={pointRuleset}
+                                    onSelect={selectPokemon}
+                                    search={search}
+                                    setSearch={setSearch}
+                                />
+                            </Stack>
+                        </Grid.Col>
+                        <Grid.Col ta="right" span={9}>
+                            <Stack>
+                                <Title>Player Selections</Title>
+                                <Group justify="right">
+                                    <Text>Display Options:</Text>
+                                    <Checkbox
+                                        checked={isMinimal}
+                                        onChange={(e) =>
+                                            setIsMinimal(
+                                                e.currentTarget.checked
+                                            )
+                                        }
+                                        label="Minimal View?"
+                                    />
+                                </Group>
+                                <SelectionAccordion
+                                    open={open}
+                                    setOpen={setOpen}
+                                    selectionData={pokemonByPlayerID}
+                                    isMinimal={isMinimal}
+                                    valueByPokemonID={
+                                        pointRuleset.valueByPokemonID
+                                    }
+                                    playerInfoByID={playerInfoByID}
+                                    cardOnClick={(pokemon) =>
+                                        smogonOnClick(
+                                            pokemon,
+                                            pointRuleset.generation
+                                        )
+                                    }
+                                />
+                            </Stack>
+                        </Grid.Col>
+                    </Grid>
+                </Stack>
+            </Center>
+        </>
     );
 };
 

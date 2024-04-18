@@ -216,10 +216,14 @@ export const fetchUsername = async (
     return data.display_name;
 };
 
-export const changeUsername = async (supabase: SupabaseClient, session: Session, newUsername: string) => {
+export const changeUsername = async (
+    supabase: SupabaseClient,
+    session: Session,
+    newUsername: string
+) => {
     const { error } = await supabase
         .from(profileTable)
-        .update({ display_name: newUsername})
+        .update({ display_name: newUsername })
         .eq("id", session.user.id);
     return error;
-}
+};

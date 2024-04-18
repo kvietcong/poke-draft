@@ -25,11 +25,7 @@ import {
 } from "@mantine/core";
 import Fuse from "fuse.js";
 import { Loading } from "@/components/Loading/Loading";
-import {
-    useDebouncedState,
-    useDisclosure,
-    useWindowScroll,
-} from "@mantine/hooks";
+import { useDebouncedState, useDisclosure } from "@mantine/hooks";
 import { Pokemon } from "@/types";
 import {
     CardOnClick,
@@ -39,6 +35,7 @@ import {
 } from "@/components/PokeView/View";
 import getGenerationName from "@/util/GenerationName";
 import getStatColor from "@/util/StatColors";
+import { getFirstScrollableParent } from "@/util/helpers";
 import {
     PointRule,
     fetchMovesByPokemon,
@@ -123,7 +120,6 @@ export const RulesetView = ({
     const [showFilters, filterHandlers] = useDisclosure(false);
     const [abilityFilterText, setAbilityFilterText] = useState("");
 
-    const [scroll, scrollTo] = useWindowScroll();
     const [open, setOpen] = useState<string[]>([]);
 
     const [movesFilter, setMovesFilter] = useState<string[]>([]);
@@ -234,7 +230,7 @@ export const RulesetView = ({
                     ([label, value]) =>
                         value <=
                         pokemon.data.baseStats[
-                        statAbbreviations.get(label.toLowerCase()) ?? "hp"
+                            statAbbreviations.get(label.toLowerCase()) ?? "hp"
                         ]
                 );
             };
@@ -290,7 +286,7 @@ export const RulesetView = ({
     );
 
     return (
-        <>
+        <Stack>
             <Title className={classes.title} ta="center">
                 Ruleset:{" "}
                 <Text
@@ -406,33 +402,39 @@ export const RulesetView = ({
                 rules={filteredRules}
                 cardOnClick={cardOnClick ?? defaultCardOnClick}
             />
-            <Group pos="fixed" left={25} bottom={20} style={{ zIndex: 500 }}>
+            <Group pos="sticky" left={25} bottom={20} style={{ zIndex: 500 }}>
                 <Button
                     onClick={() =>
                         setOpen(
                             open.length
                                 ? []
                                 : Object.values(pointRules)
-                                    .map((x) => x[0])
-                                    .filter((x) => x != "0")
+                                      .map((x) => x[0])
+                                      .filter((x) => x != "0")
                         )
                     }
                 >
                     {open.length ? "Close All" : "Open All"}
                 </Button>
                 <Button
-                    onClick={() => {
-                        if (scroll.y > 100) scrollTo({ y: 0 });
-                        else
-                            scrollTo({
-                                y: window.document.body.scrollHeight,
-                            });
+                    onClick={(e) => {
+                        const scrollableParent =
+                            getFirstScrollableParent(e.currentTarget) ??
+                            window.document.documentElement;
+                        const scrollTop =
+                            scrollableParent.scrollTop > 100
+                                ? 0
+                                : scrollableParent.scrollHeight;
+                        scrollableParent.scrollTo({
+                            top: scrollTop,
+                            behavior: "smooth",
+                        });
                     }}
                 >
-                    Go {scroll.y > 100 ? "Up" : "Down"}
+                    Scroll Down/Up
                 </Button>
             </Group>
-        </>
+        </Stack>
     );
 };
 
