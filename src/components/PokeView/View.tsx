@@ -29,7 +29,9 @@ const defaultCardOnClick = (pokemon: Pokemon) =>
         `https://www.smogon.com/dex/${getGenerationName(pokemon.data.gen)}/pokemon/${pokemon.data.name}/`
     );
 
-const getTypesByDamageMultiplier = (types: [TypeName] | [TypeName, TypeName]) => {
+const getTypesByDamageMultiplier = (
+    types: [TypeName] | [TypeName, TypeName]
+) => {
     const manyDamageTypeByType = types.map(
         (type) => Dex.types.get(type).damageTaken
     );
@@ -85,27 +87,29 @@ export const BasicStatDisplay = ({ pokemon }: { pokemon: Pokemon }) => {
 
     const effectivenessSection = Object.entries(
         getTypesByDamageMultiplier(pokemon.data.types)
-    ).sort().reduce<JSX.Element[]>((acc, next) => {
-        const [damageMultiplier, types] = next;
-        if (!types.length) return acc;
+    )
+        .sort()
+        .reduce<JSX.Element[]>((acc, next) => {
+            const [damageMultiplier, types] = next;
+            if (!types.length) return acc;
 
-        const element = (
-            <div key={damageMultiplier}>
-                <Text ta="center" style={{ textWrap: "wrap" }}>
-                    <strong>{damageMultiplier}x Damage Taken: </strong>
-                </Text>
-                <Flex wrap="wrap" justify="center">
-                    {types.map((type) => (
-                        <Badge key={type} color={getTypeColor(type)}>
-                            {type}
-                        </Badge>
-                    ))}
-                </Flex>
-            </div>
-        );
-        acc.push(element);
-        return acc;
-    }, []);
+            const element = (
+                <div key={damageMultiplier}>
+                    <Text ta="center" style={{ textWrap: "wrap" }}>
+                        <strong>{damageMultiplier}x Damage Taken: </strong>
+                    </Text>
+                    <Flex wrap="wrap" justify="center">
+                        {types.map((type) => (
+                            <Badge key={type} color={getTypeColor(type)}>
+                                {type}
+                            </Badge>
+                        ))}
+                    </Flex>
+                </div>
+            );
+            acc.push(element);
+            return acc;
+        }, []);
 
     return (
         <Stack w={250} gap={4}>

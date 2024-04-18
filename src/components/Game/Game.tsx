@@ -9,9 +9,7 @@ import {
 import { useParams } from "react-router-dom";
 import supabase from "@/supabase";
 import {
-    gamePlayerOverrideTable,
     gamePlayerTable,
-    gameRulesetTable,
     gameSelectionTable,
     gameTable,
     pointRuleTable,
@@ -48,12 +46,6 @@ import { RulesetView } from "../Ruleset/Ruleset";
 import getGenerationName from "@/util/GenerationName";
 import { getPokemon, searchPokemon } from "@/util/Pokemon";
 
-type GameRuleset = {
-    name: string;
-    maxPoints: number;
-    maxTeamSize: number;
-};
-
 type PointRulesetInfo = {
     id: string;
     generation: number;
@@ -85,7 +77,7 @@ const getPointTotal = (
     }, 0);
 };
 
-type SelectionData = { [player: string]: Pokemon[] };
+type SelectionData = { [id: string]: Pokemon[] };
 export const SelectionAccordion = ({
     open,
     setOpen,
@@ -93,8 +85,7 @@ export const SelectionAccordion = ({
     selectionData,
     playerNameByID,
     valueByPokemonID,
-    maxPoints,
-    overrideByPlayerID,
+    rulesByPlayerID,
     playerPriorityByID,
     cardOnClick,
 }: {
@@ -104,8 +95,7 @@ export const SelectionAccordion = ({
     selectionData: SelectionData;
     playerNameByID: { [id: string]: string };
     valueByPokemonID: ValueByPokemonID;
-    maxPoints: number;
-    overrideByPlayerID: { [id: string]: GameRuleset };
+    rulesByPlayerID: { [id: string]: PlayerRule };
     playerPriorityByID: { [id: string]: number };
     cardOnClick?: CardOnClick;
 }) => {
@@ -126,15 +116,18 @@ export const SelectionAccordion = ({
                 .map(([playerID, playerName]) => (
                     <Accordion.Item key={playerID} value={playerID}>
                         <Accordion.Control>
-                            {playerName}:{" "}
-                            {(overrideByPlayerID[playerID]?.maxPoints ??
-                                maxPoints) -
-                                getPointTotal(
-                                    playerID,
-                                    selectionData,
-                                    valueByPokemonID
-                                )}{" "}
-                            points left
+                            <Text>
+                                {`${playerName} `}
+                                {` - ${
+                                    rulesByPlayerID[playerID].maxPoints -
+                                    getPointTotal(
+                                        playerID,
+                                        selectionData,
+                                        valueByPokemonID
+                                    )
+                                }/${rulesByPlayerID[playerID].maxPoints} Points Left`}
+                                {` - ${selectionData[playerID].length}/${rulesByPlayerID[playerID].maxTeamSize} Pokemon Chosen`}
+                            </Text>
                         </Accordion.Control>
                         <Accordion.Panel>
                             {open && open.includes(playerID) ? (
@@ -212,12 +205,14 @@ const PokemonSelector = ({
             />
             {search.trim() &&
                 (pokemon.data.exists &&
-                    pokemon.data.gen <= pointRuleset.generation
+                pokemon.data.gen <= pointRuleset.generation
                     ? PokemonInfo
                     : SearchError)}
         </>
     );
 };
+
+type PlayerRule = { maxPoints: number; maxTeamSize: number };
 
 const Game = ({ game }: { game: string }) => {
     const { session } = useContext(AppContext);
@@ -225,16 +220,15 @@ const Game = ({ game }: { game: string }) => {
     const [trigger, setTrigger] = useState(0);
 
     const [gameName, setGameName] = useState<string>("");
-    const [gameRuleset, setGameRuleset] = useState<GameRuleset>();
-    const [overrideByPlayerID, setOverrideByPlayerID] = useState<{
-        [id: string]: GameRuleset;
-    }>();
 
     const [playerNameByID, setPlayerNameByID] = useState<{
         [id: string]: string;
     }>();
     const [playerPriorityByID, setPlayerPriorityByID] = useState<{
         [id: string]: number;
+    }>();
+    const [rulesByPlayerID, setRulesByPlayerID] = useState<{
+        [id: string]: PlayerRule;
     }>();
     const [pokemonByPlayerID, setPokemonByPlayerID] = useState<{
         [id: string]: Pokemon[];
@@ -261,7 +255,6 @@ const Game = ({ game }: { game: string }) => {
             .from(gameTable)
             .select(
                 `name,
-                ${gameRulesetTable} (name, max_points, max_team_size),
                 ${pointRulesetTable} (id, name, generation,
                     ${pointRuleTable} (pokemon_id, value))`
             )
@@ -269,11 +262,6 @@ const Game = ({ game }: { game: string }) => {
             .returns<
                 {
                     name: string;
-                    [gameRulesetTable]: {
-                        name: string;
-                        max_points: number;
-                        max_team_size: number;
-                    };
                     [pointRulesetTable]: {
                         id: string;
                         name: string;
@@ -290,11 +278,6 @@ const Game = ({ game }: { game: string }) => {
         if (error) return console.error(error);
         if (!data) return console.log("No data received!");
         setGameName(data.name);
-        setGameRuleset({
-            name: data[gameRulesetTable].name,
-            maxPoints: data[gameRulesetTable].max_points,
-            maxTeamSize: data[gameRulesetTable].max_team_size,
-        });
         const valueByPokemonID = data[pointRulesetTable][
             pointRuleTable
         ].reduce<{
@@ -314,12 +297,16 @@ const Game = ({ game }: { game: string }) => {
     const fetchPlayers = async (game: string) => {
         let { data, error } = await supabase
             .from(gamePlayerTable)
-            .select("player (id, display_name), priority")
+            .select(
+                "player (id, display_name), priority, max_points, max_team_size"
+            )
             .eq("game", game)
             .returns<
                 {
                     player: { id: string; display_name: string };
                     priority: number;
+                    max_points: number;
+                    max_team_size: number;
                 }[]
             >();
         if (error) return console.error(error);
@@ -336,36 +323,15 @@ const Game = ({ game }: { game: string }) => {
                 return acc;
             }, {})
         );
-    };
-
-    const fetchOverrides = async (game: string) => {
-        let { data, error } = await supabase
-            .from(gamePlayerOverrideTable)
-            .select("player, game_ruleset (name, max_points, max_team_size)")
-            .eq("game", game)
-            .returns<
-                {
-                    player: string;
-                    game_ruleset: {
-                        name: string;
-                        max_points: number;
-                        max_team_size: number;
-                    };
-                }[]
-            >();
-        if (error) return console.error(error);
-        if (!data) return console.log("No data received!");
-        const newOverrideByPlayerID = data.reduce<{
-            [id: string]: GameRuleset;
-        }>((acc, next) => {
-            acc[next.player] = {
-                name: next.game_ruleset.name,
-                maxPoints: next.game_ruleset.max_points,
-                maxTeamSize: next.game_ruleset.max_team_size,
-            };
-            return acc;
-        }, {});
-        setOverrideByPlayerID(newOverrideByPlayerID);
+        setRulesByPlayerID(
+            data.reduce<{ [id: string]: PlayerRule }>((acc, next) => {
+                acc[next.player.id] = {
+                    maxPoints: next.max_points,
+                    maxTeamSize: next.max_team_size,
+                };
+                return acc;
+            }, {})
+        );
     };
 
     const fetchPokemonByPlayer = async (
@@ -442,10 +408,6 @@ const Game = ({ game }: { game: string }) => {
     }, [game]);
 
     useEffect(() => {
-        fetchOverrides(game);
-    }, [game]);
-
-    useEffect(() => {
         if (!game) return;
         fetchGame(game);
         fetchPlayers(game);
@@ -457,11 +419,10 @@ const Game = ({ game }: { game: string }) => {
     }, [game, pointRuleset, trigger]);
 
     if (
-        !gameRuleset ||
         !pointRuleset ||
-        !pokemonByPlayerID ||
+        !rulesByPlayerID ||
         !playerNameByID ||
-        !overrideByPlayerID ||
+        !pokemonByPlayerID ||
         !playerPriorityByID
     )
         return <Loading />;
@@ -486,7 +447,7 @@ const Game = ({ game }: { game: string }) => {
 
         const ids = Object.keys(playerNameByID);
         const filteredForLimits = ids.filter((id) => {
-            const rulesetForPlayer = overrideByPlayerID[id] ?? gameRuleset;
+            const rulesetForPlayer = rulesByPlayerID[id];
             const hasPoints = totalByID[id] < rulesetForPlayer.maxPoints;
             const enoughRoom =
                 (pokemonByPlayerID[id] ?? []).length <
@@ -558,77 +519,61 @@ const Game = ({ game }: { game: string }) => {
 
     const selectPokemon = getIsMyTurn()
         ? async (pokemon: Pokemon) => {
-            if (!session)
-                return notifications.show({
-                    color: "red",
-                    title: "Not Logged In",
-                    message: "You need to be logged in! How did you do this?",
-                });
-            if (!(session.user.id in playerNameByID))
-                return notifications.show({
-                    color: "red",
-                    title: "Not in the Game",
-                    message:
-                        "You need to be in the game! How did you do this?",
-                });
+              if (!session)
+                  return notifications.show({
+                      color: "red",
+                      title: "Not Logged In",
+                      message: "You need to be logged in! How did you do this?",
+                  });
+              if (!(session.user.id in playerNameByID))
+                  return notifications.show({
+                      color: "red",
+                      title: "Not in the Game",
+                      message:
+                          "You need to be in the game! How did you do this?",
+                  });
 
-            const value = pointRuleset.valueByPokemonID[pokemon.data.id];
-            if (value === 0)
-                return notifications.show({
-                    color: "red",
-                    title: "Banned Pokemon",
-                    message: `${pokemon.data.name} is a banned Pokemon!`,
-                });
+              const value = pointRuleset.valueByPokemonID[pokemon.data.id];
+              if (value === 0)
+                  return notifications.show({
+                      color: "red",
+                      title: "Banned Pokemon",
+                      message: `${pokemon.data.name} is a banned Pokemon!`,
+                  });
 
-            const currentPointTotal = getPointTotal(
-                session.user.id,
-                pokemonByPlayerID,
-                pointRuleset.valueByPokemonID
-            );
+              const currentPointTotal = getPointTotal(
+                  session.user.id,
+                  pokemonByPlayerID,
+                  pointRuleset.valueByPokemonID
+              );
 
-            const rulesetForPlayer =
-                overrideByPlayerID[session.user.id] ?? gameRuleset;
-            if (currentPointTotal + value > rulesetForPlayer.maxPoints)
-                return notifications.show({
-                    color: "red",
-                    title: "You don't have enough points",
-                    message: `${pokemon.data.name} is worth too many points!`,
-                });
+              const rulesetForPlayer = rulesByPlayerID[session.user.id];
+              if (currentPointTotal + value > rulesetForPlayer.maxPoints)
+                  return notifications.show({
+                      color: "red",
+                      title: "You don't have enough points",
+                      message: `${pokemon.data.name} is worth too many points!`,
+                  });
 
-            const { error } = await supabase.from(gameSelectionTable).insert([
-                {
-                    game,
-                    pokemon_id: pokemon.data.id,
-                    player: session.user.id,
-                },
-            ]);
-            if (error)
-                return notifications.show({
-                    color: "red",
-                    title: "Couldn't Select Pokemon",
-                    message: `${error.message}`,
-                });
-            notifications.show({
-                title: "Added your selection",
-                message: `You have added ${pokemon.data.name} to your team`,
-            });
-        }
+              const { error } = await supabase.from(gameSelectionTable).insert([
+                  {
+                      game,
+                      pokemon_id: pokemon.data.id,
+                      player: session.user.id,
+                  },
+              ]);
+              if (error)
+                  return notifications.show({
+                      color: "red",
+                      title: "Couldn't Select Pokemon",
+                      message: `${error.message}`,
+                  });
+              notifications.show({
+                  title: "Added your selection",
+                  message: `You have added ${pokemon.data.name} to your team`,
+              });
+          }
         : undefined;
-
-    const Overrides = Object.entries(overrideByPlayerID)
-        .map(([id, override]) => {
-            const playerName = playerNameByID[id];
-            return (
-                playerName && (
-                    <Text key={id}>
-                        {playerName}: ({override.name}) Max Points:{" "}
-                        {override.maxPoints}, Max Team Size:{" "}
-                        {override.maxTeamSize}
-                    </Text>
-                )
-            );
-        })
-        .filter((x) => x);
 
     return (
         <Center>
@@ -653,28 +598,16 @@ const Game = ({ game }: { game: string }) => {
                     )
                 )}
                 <Title order={4}>
-                    Game Ruleset:{" "}
+                    Player Rules:{" "}
                     <Text
                         inherit
                         variant="gradient"
                         component="span"
                         gradient={{ from: "pink", to: "yellow" }}
                     >
-                        {gameRuleset.name}
-                    </Text>
-                    <Text>
-                        Max Points: {gameRuleset.maxPoints}, Max Team Size:{" "}
-                        {gameRuleset.maxTeamSize}
+                        Something
                     </Text>
                 </Title>
-                {Overrides.length > 0 && (
-                    <>
-                        <Title order={4}>
-                            Game Ruleset Overrides:
-                            {Overrides}
-                        </Title>
-                    </>
-                )}
                 <Title order={3}>
                     Point Ruleset:{" "}
                     <Text
@@ -731,8 +664,7 @@ const Game = ({ game }: { game: string }) => {
                                 isMinimal={isMinimal}
                                 playerNameByID={playerNameByID}
                                 valueByPokemonID={pointRuleset.valueByPokemonID}
-                                maxPoints={gameRuleset.maxPoints}
-                                overrideByPlayerID={overrideByPlayerID}
+                                rulesByPlayerID={rulesByPlayerID}
                                 cardOnClick={selectCardOnClick}
                             />
                         </Stack>

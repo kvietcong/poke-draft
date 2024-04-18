@@ -4,8 +4,7 @@ import { useState, useEffect, useMemo, Dispatch, SetStateAction } from "react";
 import { useParams } from "react-router-dom";
 import { colorByType } from "@/util/PokemonColors";
 
-import { Sprites, PokemonSprite } from "@pkmn/img";
-import { Dex, StatID, toID } from "@pkmn/dex";
+import { Dex, StatID } from "@pkmn/dex";
 
 import {
     Text,
