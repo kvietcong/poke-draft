@@ -1,18 +1,15 @@
 import supabase from "@/supabase";
 import classes from "@/App.module.css";
-import { useState, useEffect, useMemo, Dispatch, SetStateAction } from "react";
+import { useState, useEffect, useMemo, useContext } from "react";
 import { useParams } from "react-router-dom";
 import { colorByType } from "@/util/PokemonColors";
-
-import { Dex, StatID } from "@pkmn/dex";
-
+import { StatID } from "@pkmn/dex";
 import {
     Text,
     Group,
     Center,
     Title,
     Stack,
-    Accordion,
     Input,
     Button,
     Slider,
@@ -25,92 +22,54 @@ import {
 } from "@mantine/core";
 import Fuse from "fuse.js";
 import { Loading } from "@/components/Loading/Loading";
-import {
-    useDebouncedState,
-    useDisclosure,
-    useWindowScroll,
-} from "@mantine/hooks";
+import { useDebouncedState, useDisclosure } from "@mantine/hooks";
 import { Pokemon } from "@/types";
 import {
+    AccordionSectionData,
     CardOnClick,
-    PokemonCard,
-    PokemonPill,
-    PokemonTooltip,
+    PokemonAccordion,
 } from "@/components/PokeView/View";
 import getGenerationName from "@/util/GenerationName";
 import getStatColor from "@/util/StatColors";
-import {
-    PointRule,
-    fetchMovesByPokemon,
-    fetchPointRules,
-    fetchRulesetInfo,
-} from "@/util/database";
-
-export const RulesetAccordion = ({
-    open,
-    rules,
-    setOpen,
-    isMinimal,
-    cardOnClick,
-}: {
-    open?: string[];
-    rules: PointRule[];
-    setOpen?: Dispatch<SetStateAction<string[]>>;
-    isMinimal?: boolean;
-    cardOnClick?: CardOnClick;
-}) => {
-    const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
-    return (
-        <>
-            <Accordion
-                value={open}
-                multiple={true}
-                onChange={setOpen}
-                variant={isMinimal ? "filled" : "separated"}
-            >
-                {rules.map(([value, pokemonData]) => (
-                    <Accordion.Item key={value} value={value}>
-                        <Accordion.Control>
-                            {value === "0" ? "Banned" : `${value} Points`}
-                        </Accordion.Control>
-                        <Accordion.Panel>
-                            {open && open.includes(value) ? (
-                                <Group justify="center">
-                                    {pokemonData.map((pokemon) => (
-                                        <PokemonTooltip
-                                            key={pokemon.data.id}
-                                            pokemon={pokemon}
-                                        >
-                                            <PokemonDisplay
-                                                pokemon={pokemon}
-                                                onClick={cardOnClick}
-                                            />
-                                        </PokemonTooltip>
-                                    ))}
-                                </Group>
-                            ) : null}
-                        </Accordion.Panel>
-                    </Accordion.Item>
-                ))}
-            </Accordion>
-        </>
-    );
-};
+import { getFirstScrollableParent } from "@/util/helpers";
+import { fetchPointRulesetInfo } from "@/util/database";
+import { fetchMovesByPokemon, getPokemon, smogonOnClick } from "@/util/Pokemon";
+import { PointRulesetContext, PointRulesetProvider } from "@/Context";
+import { AppContext } from "@/App";
 
 export const RulesetView = ({
-    ruleset,
     cardOnClick,
     extraRulePredicates,
 }: {
-    ruleset: string;
     cardOnClick?: CardOnClick;
     extraRulePredicates?: ((p: Pokemon) => boolean)[];
 }) => {
-    const [pointRules, setPointRules] = useState<PointRule[]>([]);
-    const [rulesetInfo, setRulesetInfo] = useState<{
-        name: string;
-        generation: number;
-    }>();
+    const { dex, pointRulesetInfo, pokemonIDsByValue } =
+        useContext(PointRulesetContext);
+    if (!pointRulesetInfo || !dex || !pokemonIDsByValue) return;
+
+    const { prefersMinimal } = useContext(AppContext);
+
+    const pointRules = useMemo(() => {
+        const pointRules = Object.entries(
+            pokemonIDsByValue
+        ).map<AccordionSectionData>(([value, ids]) => [
+            value,
+            ids.map((id) => getPokemon(id, dex)),
+        ]);
+        const zeroThenHiToLo = (
+            a: [string, Pokemon[]],
+            b: [string, Pokemon[]]
+        ) => {
+            const valA = parseInt(a[0]);
+            const valB = parseInt(b[0]);
+            if (valA === 0) return -1;
+            else if (valB === 0) return 1;
+            else return valB - valA;
+        };
+        pointRules.sort(zeroThenHiToLo);
+        return pointRules;
+    }, [pointRulesetInfo, dex]);
 
     const [name, setName] = useDebouncedState("", 300);
     const [fuzzyLevel, setFuzzyLevel] = useState(0.2);
@@ -118,12 +77,9 @@ export const RulesetView = ({
     const [types, setTypes] = useState<string[]>([]);
     const [willMatchAllTypes, setWillMatchAllTypes] = useState(true);
 
-    const [isMinimal, setIsMinimal] = useState(false);
-
     const [showFilters, filterHandlers] = useDisclosure(false);
     const [abilityFilterText, setAbilityFilterText] = useState("");
 
-    const [scroll, scrollTo] = useWindowScroll();
     const [open, setOpen] = useState<string[]>([]);
 
     const [movesFilter, setMovesFilter] = useState<string[]>([]);
@@ -141,14 +97,7 @@ export const RulesetView = ({
     );
 
     const defaultCardOnClick = (pokemon: Pokemon) =>
-        window.open(
-            `https://www.smogon.com/dex/${getGenerationName(rulesetInfo?.generation)}/pokemon/${pokemon.data.name}/`
-        );
-
-    const dex = useMemo(() => {
-        if (!rulesetInfo) return Dex;
-        return Dex.forGen(rulesetInfo.generation);
-    }, [rulesetInfo]);
+        smogonOnClick(pokemon, pointRulesetInfo.generation);
 
     const [movesByPokemon, setMovesByPokemon] = useState<{
         [id: string]: string[];
@@ -212,10 +161,12 @@ export const RulesetView = ({
         }
         if (movesFilter.length) {
             const movesPredicate = (pokemon: Pokemon) => {
-                return movesFilter.every((move: string) =>
-                    movesByPokemon[pokemon.data.id]
-                        .map((move) => move.toLowerCase())
-                        .includes(move)
+                return movesFilter.every(
+                    (move: string) =>
+                        pokemon.data.id in movesByPokemon &&
+                        movesByPokemon[pokemon.data.id]
+                            .map((move) => move.toLowerCase())
+                            .includes(move)
                 );
             };
             predicates.push(movesPredicate);
@@ -234,7 +185,7 @@ export const RulesetView = ({
                     ([label, value]) =>
                         value <=
                         pokemon.data.baseStats[
-                        statAbbreviations.get(label.toLowerCase()) ?? "hp"
+                            statAbbreviations.get(label.toLowerCase()) ?? "hp"
                         ]
                 );
             };
@@ -243,11 +194,15 @@ export const RulesetView = ({
         if (extraRulePredicates) predicates.push(...extraRulePredicates);
         const doesPokemonMatch = (pokemon: Pokemon) =>
             predicates.every((predicate) => predicate(pokemon));
-        const result = pointRules.reduce<PointRule[]>((acc, next) => {
-            const filteredPokemon = next[1].filter(doesPokemonMatch);
-            if (filteredPokemon.length) acc.push([next[0], filteredPokemon]);
-            return acc;
-        }, []);
+        const result = pointRules.reduce<AccordionSectionData[]>(
+            (acc, next) => {
+                const filteredPokemon = next[1].filter(doesPokemonMatch);
+                if (filteredPokemon.length)
+                    acc.push([next[0], filteredPokemon]);
+                return acc;
+            },
+            []
+        );
         return result;
     }, [
         name,
@@ -262,21 +217,11 @@ export const RulesetView = ({
     ]);
 
     useEffect(() => {
-        async () => {
+        (async () => {
             setMovesByPokemon(await fetchMovesByPokemon(dex));
-        };
+        })();
     }, [dex]);
 
-    useEffect(() => {
-        (async () => {
-            const rulesetInfo = await fetchRulesetInfo(supabase, ruleset);
-            if (rulesetInfo) setRulesetInfo(rulesetInfo);
-            const pointRules = await fetchPointRules(supabase, ruleset);
-            if (pointRules) setPointRules(pointRules);
-        })();
-    }, [ruleset, dex]);
-
-    if (!rulesetInfo || !pointRules) return <Loading />;
     const theMoves = Object.values(
         dex.moves.all().reduce<{
             [id: string]: { value: string; label: string };
@@ -290,7 +235,7 @@ export const RulesetView = ({
     );
 
     return (
-        <>
+        <Stack>
             <Title className={classes.title} ta="center">
                 Ruleset:{" "}
                 <Text
@@ -299,7 +244,7 @@ export const RulesetView = ({
                     component="span"
                     gradient={{ from: "pink", to: "yellow" }}
                 >
-                    {rulesetInfo.name}
+                    {pointRulesetInfo.name}
                 </Text>
             </Title>
             <Group>
@@ -308,14 +253,6 @@ export const RulesetView = ({
                     style={{ flexGrow: 1 }}
                     placeholder="Search for Pokemon"
                     onChange={(e) => setName(e.target.value)}
-                />
-            </Group>
-            <Group>
-                <Text>Display Options:</Text>
-                <Checkbox
-                    checked={isMinimal}
-                    onChange={(e) => setIsMinimal(e.currentTarget.checked)}
-                    label="Minimal View?"
                 />
             </Group>
             <Button onClick={filterHandlers.toggle}>Toggle Filters</Button>
@@ -399,52 +336,84 @@ export const RulesetView = ({
                     </Group>
                 </Stack>
             </Collapse>
-            <RulesetAccordion
+            <PokemonAccordion
                 open={open}
                 setOpen={setOpen}
-                isMinimal={isMinimal}
-                rules={filteredRules}
+                data={filteredRules}
+                isMinimal={prefersMinimal}
+                sectionLabelTransformer={(label) =>
+                    label === "0" ? "Banned" : `${label} Points`
+                }
                 cardOnClick={cardOnClick ?? defaultCardOnClick}
             />
-            <Group pos="fixed" left={25} bottom={20} style={{ zIndex: 500 }}>
+            <Group pos="sticky" left={25} bottom={20} style={{ zIndex: 500 }}>
                 <Button
                     onClick={() =>
                         setOpen(
                             open.length
                                 ? []
                                 : Object.values(pointRules)
-                                    .map((x) => x[0])
-                                    .filter((x) => x != "0")
+                                      .map((x) => x[0])
+                                      .filter((x) => x != "0")
                         )
                     }
                 >
                     {open.length ? "Close All" : "Open All"}
                 </Button>
                 <Button
-                    onClick={() => {
-                        if (scroll.y > 100) scrollTo({ y: 0 });
-                        else
-                            scrollTo({
-                                y: window.document.body.scrollHeight,
-                            });
+                    onClick={(e) => {
+                        const scrollableParent =
+                            getFirstScrollableParent(e.currentTarget) ??
+                            window.document.documentElement;
+                        const scrollTop =
+                            scrollableParent.scrollTop > 100
+                                ? 0
+                                : scrollableParent.scrollHeight;
+                        scrollableParent.scrollTo({
+                            top: scrollTop,
+                            behavior: "smooth",
+                        });
                     }}
                 >
-                    Go {scroll.y > 100 ? "Up" : "Down"}
+                    Scroll Down/Up
                 </Button>
             </Group>
-        </>
+        </Stack>
     );
 };
 
-const RulesetCentered = ({ ruleset }: { ruleset: string }) => (
+const RulesetCentered = () => (
     <Center>
-        <Stack w="50%">
-            <RulesetView ruleset={ruleset} />
+        <Stack w="70%">
+            <RulesetView />
         </Stack>
     </Center>
 );
 
-export const RulesetPage = () => {
+export const RulesetPage = () => (
+    <PointRulesetProvider>
+        <_RulesetPage />
+    </PointRulesetProvider>
+);
+
+export const _RulesetPage = () => {
     const { id } = useParams();
-    return id && <RulesetCentered ruleset={id} />;
+    if (!id) return <>No ID provided</>;
+
+    const { pointRulesetInfo, setPointRulesetInfo } =
+        useContext(PointRulesetContext);
+
+    const refreshPointRulesetInfo = async () => {
+        const pointRulesetInfo = await fetchPointRulesetInfo(supabase, id);
+        if (!pointRulesetInfo) return;
+        setPointRulesetInfo(pointRulesetInfo);
+    };
+
+    useEffect(() => {
+        refreshPointRulesetInfo();
+    }, [id]);
+
+    if (![pointRulesetInfo].every((x) => x)) return <Loading />;
+
+    return id && <RulesetCentered />;
 };

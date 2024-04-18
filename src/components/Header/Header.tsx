@@ -4,7 +4,7 @@ import classes from "./Header.module.css";
 import { Link, useLocation } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import supabase from "@/supabase";
-import { profileTable } from "@/util/DatabaseTables";
+import { profileTable } from "@/util/database";
 
 export const Header = () => {
     const { session } = useContext(AppContext);

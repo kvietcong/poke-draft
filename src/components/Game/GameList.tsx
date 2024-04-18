@@ -12,7 +12,7 @@ import {
     Anchor,
 } from "@mantine/core";
 import { Link } from "react-router-dom";
-import { gameTable } from "@/util/DatabaseTables";
+import { gameTable } from "@/util/database";
 
 export const GameListView = () => {
     const [games, setGames] = useState<[string, string][]>([]);

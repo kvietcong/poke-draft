@@ -19,7 +19,6 @@ import {
 import classes from "@/App.module.css";
 import { Link } from "react-router-dom";
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle/ColorSchemeToggle";
-import { profileTable } from "@/util/DatabaseTables";
 import { notifications } from "@mantine/notifications";
 import { changeUsername, fetchUsername } from "@/util/database";
 
@@ -62,7 +61,8 @@ export const LoginView = () => {
 };
 
 export const MyProfileView = () => {
-    const { session } = useContext(AppContext);
+    const { session, prefersMinimal, setPrefersMinimal } =
+        useContext(AppContext);
     if (!session)
         return (
             <Anchor to="/" component={Link}>
@@ -129,6 +129,10 @@ export const MyProfileView = () => {
                 </Grid>
                 <Stack>
                     <ColorSchemeToggle />
+                    <Button onClick={() => setPrefersMinimal(!prefersMinimal)}>
+                        Toggle Minimal Preference (Now Preferring{" "}
+                        {prefersMinimal ? "Minimal" : "Full"} View)
+                    </Button>
                     <Button onClick={() => supabase.auth.signOut()}>
                         Log out
                     </Button>

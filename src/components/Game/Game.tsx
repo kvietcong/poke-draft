@@ -1,53 +1,51 @@
-import {
-    useState,
-    useEffect,
-    Dispatch,
-    SetStateAction,
-    useMemo,
-    useContext,
-} from "react";
+import { useState, useEffect, useMemo, useContext, useRef } from "react";
 import { useParams } from "react-router-dom";
 import supabase from "@/supabase";
-import { gamePlayerTable, gameSelectionTable } from "@/util/DatabaseTables";
 import {
-    Accordion,
     Button,
     Center,
-    Checkbox,
-    Divider,
+    Drawer,
     Grid,
-    Group,
     Stack,
     Text,
     TextInput,
     Title,
 } from "@mantine/core";
 import classes from "@/App.module.css";
-import { Pokemon } from "@/types";
+import { Pokemon, ValueByPokemonID } from "@/types";
 import {
+    AccordionSectionData,
     BasicStatDisplay,
     CardOnClick,
+    PokemonAccordion,
     PokemonCard,
-    PokemonPill,
-    PokemonTooltip,
 } from "@/components/PokeView/View";
 import { Loading } from "../Loading/Loading";
-import { useDebouncedState, useScrollIntoView } from "@mantine/hooks";
+import { useDebouncedState, useDisclosure } from "@mantine/hooks";
 import { AppContext } from "@/App";
 import { notifications } from "@mantine/notifications";
 import { RulesetView } from "../Ruleset/Ruleset";
-import getGenerationName from "@/util/GenerationName";
-import { searchPokemon } from "@/util/Pokemon";
+import { searchPokemon, smogonOnClick } from "@/util/Pokemon";
 import {
-    PlayerInfo,
-    PointRulesetInfo,
     fetchGameInfo,
-    fetchPlayerInfoByID,
-    fetchPokemonByPlayerID,
+    fetchAllPlayerInfo,
+    fetchPointRulesetInfoFromGameID,
+    gamePlayerTable,
+    gameSelectionTable,
+    fetchGameTrades,
+    tradeConfirmationTable,
+    tradeTable,
 } from "@/util/database";
+import { GameTradesAccordion, TradeCreator } from "./Trade";
+import {
+    GameInfoContext,
+    GamePlayersContext,
+    GameTradesContext,
+    PointRulesetContext,
+    WholeGameProvider,
+} from "@/Context";
 
-type ValueByPokemonID = { [pokemonID: string]: number };
-const getPointLabel = (
+export const getPointLabel = (
     pokemon: Pokemon,
     valueByPokemonID: ValueByPokemonID
 ): string => {
@@ -60,106 +58,35 @@ const getPointLabel = (
 };
 
 const getPointTotal = (
-    playerID: string,
-    selectionData: SelectionData,
+    pokemon: Pokemon[],
     valueByPokemonID: ValueByPokemonID
 ): number => {
-    const pokemons = selectionData[playerID] ?? [];
-    return pokemons.reduce((acc, next) => {
+    return pokemon.reduce((acc, next) => {
         return acc + (valueByPokemonID[next.data.id] ?? 1);
     }, 0);
 };
 
-type SelectionData = { [id: string]: Pokemon[] };
-export const SelectionAccordion = ({
-    open,
-    setOpen,
-    isMinimal,
-    selectionData,
-    playerInfoByID,
-    valueByPokemonID,
-    cardOnClick,
-}: {
-    open: string[];
-    setOpen: Dispatch<SetStateAction<string[]>>;
-    isMinimal: boolean;
-    selectionData: SelectionData;
-    playerInfoByID: { [id: string]: PlayerInfo };
-    valueByPokemonID: ValueByPokemonID;
-    cardOnClick?: CardOnClick;
-}) => {
-    const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
-    return (
-        <Accordion
-            value={open}
-            onChange={setOpen}
-            multiple={true}
-            variant={isMinimal ? "filled" : "separated"}
-        >
-            {Object.entries(playerInfoByID)
-                .sort((a, b) => b[1].priority - a[1].priority)
-                .map(([playerID, playerInfo]) => (
-                    <Accordion.Item key={playerID} value={playerID}>
-                        <Accordion.Control>
-                            <Text>
-                                {`${playerInfo.name} `}
-                                {` - ${playerInfo.rules.maxPoints -
-                                    getPointTotal(
-                                        playerID,
-                                        selectionData,
-                                        valueByPokemonID
-                                    )
-                                    }/${playerInfo.rules.maxPoints} Points Left`}
-                                {` - ${selectionData[playerID].length}/${playerInfo.rules.maxTeamSize} Pokemon Chosen`}
-                            </Text>
-                        </Accordion.Control>
-                        <Accordion.Panel>
-                            {open && open.includes(playerID) ? (
-                                <Group justify="center" ta="center">
-                                    {selectionData[playerID]?.map((pokemon) => (
-                                        <PokemonTooltip
-                                            pokemon={pokemon}
-                                            key={pokemon.data.id}
-                                        >
-                                            <PokemonDisplay
-                                                pokemon={pokemon}
-                                                onClick={cardOnClick}
-                                            />
-                                            <Text>
-                                                {getPointLabel(
-                                                    pokemon,
-                                                    valueByPokemonID
-                                                )}
-                                            </Text>
-                                        </PokemonTooltip>
-                                    )) || <Text>No Selections</Text>}
-                                </Group>
-                            ) : null}
-                        </Accordion.Panel>
-                    </Accordion.Item>
-                ))}
-        </Accordion>
-    );
-};
-
-const smogonOnClick = (pokemon: Pokemon, generation?: number) =>
-    window.open(
-        `https://www.smogon.com/dex/${getGenerationName(generation)}/pokemon/${pokemon.data.name}/`
-    );
-
 const PokemonSelector = ({
-    pointRuleset,
     onSelect,
     search,
     setSearch,
 }: {
-    pointRuleset: PointRulesetInfo;
     onSelect?: (pokemon: Pokemon) => any;
     search: string;
     setSearch: (newValue: string) => void;
 }) => {
+    const { dex, pointRulesetInfo, valueByPokemonID } =
+        useContext(PointRulesetContext);
+
+    if (!dex || !pointRulesetInfo || !valueByPokemonID) return;
+
     const pokemon = useMemo(() => {
-        return searchPokemon(search.trim(), pointRuleset.generation);
+        return searchPokemon(search.trim(), dex);
+    }, [search]);
+
+    const inputRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        if (inputRef.current) inputRef.current.value = search;
     }, [search]);
 
     const PokemonInfo = (
@@ -169,14 +96,12 @@ const PokemonSelector = ({
                     Select Pokemon
                 </Button>
             )}
-            <Title>
-                {getPointLabel(pokemon, pointRuleset.valueByPokemonID)}
-            </Title>
+            <Title order={3}>{getPointLabel(pokemon, valueByPokemonID)}</Title>
             <Center>
                 <PokemonCard
                     pokemon={pokemon}
                     onClick={() =>
-                        smogonOnClick(pokemon, pointRuleset.generation)
+                        smogonOnClick(pokemon, pointRulesetInfo.generation)
                     }
                 />
             </Center>
@@ -186,14 +111,16 @@ const PokemonSelector = ({
     );
 
     let error_msg = null;
-    if (!pokemon.data.exists) error_msg = `Couldn't find ${search}`
-    else if (pokemon.data.gen > pointRuleset.generation) error_msg = `${pokemon.data.name} isn't in generation ${pointRuleset.generation}`
+    if (!pokemon.data.exists) error_msg = `Couldn't find ${search}`;
+    else if (pokemon.data.gen > pointRulesetInfo.generation)
+        error_msg = `${pokemon.data.name} isn't in generation ${pointRulesetInfo.generation}`;
 
     const SearchError = error_msg && <Title order={2}>{error_msg}</Title>;
 
     return (
         <>
             <TextInput
+                ref={inputRef}
                 label="Search for a Pokemon"
                 placeholder="Pokemon Name"
                 defaultValue={search}
@@ -204,125 +131,63 @@ const PokemonSelector = ({
     );
 };
 
-const Game = ({ game }: { game: string }) => {
-    const { session } = useContext(AppContext);
+const Game = () => {
+    const { session, prefersMinimal } = useContext(AppContext);
+    const { gameInfo } = useContext(GameInfoContext);
+    const { playerInfoByID, allPlayerInfo } = useContext(GamePlayersContext);
+    const { dex, pointRulesetInfo, valueByPokemonID } =
+        useContext(PointRulesetContext);
 
-    const [trigger, setTrigger] = useState(0);
+    const pokemonByPlayerID = useMemo(() => {
+        if (!allPlayerInfo || !dex) return;
+        return allPlayerInfo.reduce<{ [playerID: string]: Pokemon[] }>(
+            (acc, next) => {
+                acc[next.id] = Object.values(next.selections);
+                return acc;
+            },
+            {}
+        );
+    }, [allPlayerInfo, dex]);
 
-    const [gameName, setGameName] = useState<string>("");
-
-    const [playerInfoByID, setPlayerInfoByID] = useState<{
-        [id: string]: PlayerInfo;
-    }>();
-
-    const [pokemonByPlayerID, setPokemonByPlayerID] = useState<{
-        [id: string]: Pokemon[];
-    }>();
-
-    const [pointRuleset, setPointRuleset] = useState<PointRulesetInfo>();
+    const [isRulesetOpened, { open: showRuleset, close: hideRuleset }] =
+        useDisclosure(false);
+    const [isTradingOpened, { open: showTrading, close: hideTrading }] =
+        useDisclosure(false);
 
     const [open, setOpen] = useState<string[]>([]);
-    const [isMinimal, setIsMinimal] = useState(false);
 
-    const { scrollIntoView: scrollToSelector, targetRef: selectionRef } =
-        useScrollIntoView<HTMLHeadingElement>();
     const [search, setSearch] = useDebouncedState("", 150);
     const rulesetCardOnClick: CardOnClick = (pokemon) => {
         setSearch(pokemon.data.id);
-        scrollToSelector();
+        hideRuleset();
+        window.document
+            .getElementById("make-selection")
+            ?.scrollIntoView({ behavior: "smooth" });
     };
 
-    const { scrollIntoView: scrollToRuleset, targetRef: rulesetRef } =
-        useScrollIntoView<HTMLDivElement>();
-
     useEffect(() => {
-        const select = supabase
-            .channel("game-selections")
-            .on(
-                "postgres_changes",
-                {
-                    event: "*",
-                    schema: "public",
-                    table: gameSelectionTable,
-                    filter: `game=eq.${game}`,
-                },
-                (payload) => {
-                    console.log("Change received for selections!", payload);
-                    setTrigger((last) => last + 1); // Trigger mechanism, b/c putting function here captures stale values. Def a better way to do this so TODO
-                    notifications.show({
-                        title: "Update",
-                        message: "A team update was triggered",
-                    });
-                }
-            )
-            .subscribe();
-        const join = supabase
-            .channel("game-joining")
-            .on(
-                "postgres_changes",
-                {
-                    event: "*",
-                    schema: "public",
-                    table: gamePlayerTable,
-                    filter: `game=eq.${game}`,
-                },
-                (payload) => {
-                    console.log("Change received for players!", payload);
-                    setTrigger((last) => last + 1);
-                    notifications.show({
-                        title: "Update",
-                        message: "A player update was triggered",
-                    });
-                }
-            )
-            .subscribe();
-        return () => {
-            supabase.removeChannel(select);
-            supabase.removeChannel(join);
-        };
-    }, [game]);
+        if (playerInfoByID) setOpen(Object.keys(playerInfoByID));
+    }, [playerInfoByID]);
 
-    useEffect(() => {
-        if (!game) return;
-        (async () => {
-            const gameInfo = await fetchGameInfo(supabase, game);
-            if (gameInfo) {
-                setGameName(gameInfo.name);
-                setPointRuleset(gameInfo.pointRuleset);
-            }
-            const playerInfoByID = await fetchPlayerInfoByID(supabase, game);
-            if (playerInfoByID) setPlayerInfoByID(playerInfoByID);
-        })();
-    }, [game, trigger]);
-
-    useEffect(() => {
-        if (!game || !pointRuleset) return;
-        (async () => {
-            const pokemonByPlayerID = await fetchPokemonByPlayerID(
-                supabase,
-                game,
-                pointRuleset
-            );
-            if (pokemonByPlayerID) {
-                setPokemonByPlayerID(pokemonByPlayerID);
-                setOpen(Object.keys(pokemonByPlayerID));
-            }
-        })();
-    }, [game, pointRuleset, trigger]);
-
-    if (!pointRuleset || !playerInfoByID || !pokemonByPlayerID || false)
+    if (
+        !gameInfo ||
+        !pointRulesetInfo ||
+        !playerInfoByID ||
+        !pokemonByPlayerID ||
+        !valueByPokemonID ||
+        false
+    )
         return <Loading />;
 
     const getCurrentTurnPlayerID = () => {
         const ids = Object.keys(playerInfoByID);
         if (ids.length < 2) return;
-        const totalByID = Object.keys(playerInfoByID).reduce<{
+        const totalByID = Object.values(playerInfoByID).reduce<{
             [id: string]: number;
         }>((acc, next) => {
-            acc[next] = getPointTotal(
-                next,
-                pokemonByPlayerID,
-                pointRuleset.valueByPokemonID
+            acc[next.id] = getPointTotal(
+                Object.values(next.selections),
+                valueByPokemonID
             );
             return acc;
         }, {});
@@ -331,7 +196,7 @@ const Game = ({ game }: { game: string }) => {
             const rulesetForPlayer = playerInfoByID[id].rules;
             const hasPoints = totalByID[id] < rulesetForPlayer.maxPoints;
             const enoughRoom =
-                (pokemonByPlayerID[id] ?? []).length <
+                (pokemonByPlayerID[id]?.length ?? 0) <
                 rulesetForPlayer.maxTeamSize;
             return hasPoints && enoughRoom;
         });
@@ -355,6 +220,8 @@ const Game = ({ game }: { game: string }) => {
         return filteredForRound?.[0];
     };
     const currentTurnPlayerID = getCurrentTurnPlayerID();
+    const doesGameHavePlayers = Object.keys(playerInfoByID).length > 1;
+    const isDraftingFinished = !currentTurnPlayerID && doesGameHavePlayers;
 
     const getIsMyTurn = (): boolean => {
         if (!session) return false;
@@ -374,7 +241,7 @@ const Game = ({ game }: { game: string }) => {
     const joinGame = async () => {
         const { error } = await supabase.from(gamePlayerTable).insert([
             {
-                game,
+                game: gameInfo.id,
                 player: session?.user.id,
             },
         ]);
@@ -386,171 +253,406 @@ const Game = ({ game }: { game: string }) => {
             });
         notifications.show({
             title: "Game Joined",
-            message: `Welcome to ${gameName}!`,
+            message: `Welcome to ${gameInfo.name}!`,
         });
     };
 
+    const selectPokemon = getIsMyTurn()
+        ? async (pokemon: Pokemon) => {
+              if (!session)
+                  return notifications.show({
+                      color: "red",
+                      title: "Not Logged In",
+                      message: "You need to be logged in! How did you do this?",
+                  });
+              if (!(session.user.id in playerInfoByID))
+                  return notifications.show({
+                      color: "red",
+                      title: "Not in the Game",
+                      message:
+                          "You need to be in the game! How did you do this?",
+                  });
+
+              const value = valueByPokemonID[pokemon.data.id];
+              if (value === 0)
+                  return notifications.show({
+                      color: "red",
+                      title: "Banned Pokemon",
+                      message: `${pokemon.data.name} is a banned Pokemon!`,
+                  });
+
+              const currentPointTotal = getPointTotal(
+                  Object.values(playerInfoByID[session.user.id].selections),
+                  valueByPokemonID
+              );
+
+              const rulesetForPlayer = playerInfoByID[session.user.id].rules;
+              if (currentPointTotal + value > rulesetForPlayer.maxPoints)
+                  return notifications.show({
+                      color: "red",
+                      title: "You don't have enough points",
+                      message: `${pokemon.data.name} is worth too many points!`,
+                  });
+
+              const { error } = await supabase.from(gameSelectionTable).insert([
+                  {
+                      game: gameInfo.id,
+                      pokemon_id: pokemon.data.id,
+                      player: session.user.id,
+                  },
+              ]);
+              if (error)
+                  return notifications.show({
+                      color: "red",
+                      title: "Couldn't Select Pokemon",
+                      message: `${error.message}`,
+                  });
+              notifications.show({
+                  title: "Added your selection",
+                  message: `You have added ${pokemon.data.name} to your team`,
+              });
+          }
+        : undefined;
+
     const alreadyChosenPokemon = (pokemon: Pokemon): boolean => {
         for (const id in pokemonByPlayerID) {
-            const pokemons = pokemonByPlayerID[id];
-            if (pokemons.map((p) => p.data.id).includes(pokemon.data.id))
+            if (
+                pokemonByPlayerID[id]
+                    .map((p) => p.data.id)
+                    .includes(pokemon.data.id)
+            )
                 return false;
         }
         return true;
     };
 
-    const selectPokemon = getIsMyTurn()
-        ? async (pokemon: Pokemon) => {
-            if (!session)
-                return notifications.show({
-                    color: "red",
-                    title: "Not Logged In",
-                    message: "You need to be logged in! How did you do this?",
-                });
-            if (!(session.user.id in playerInfoByID))
-                return notifications.show({
-                    color: "red",
-                    title: "Not in the Game",
-                    message:
-                        "You need to be in the game! How did you do this?",
-                });
+    const RulesetDrawer = (
+        <Drawer
+            opened={isRulesetOpened}
+            onClose={hideRuleset}
+            title="Point Ruleset"
+            radius="md"
+            size="75%"
+            keepMounted={true}
+            position="right"
+        >
+            <RulesetView
+                cardOnClick={rulesetCardOnClick}
+                extraRulePredicates={[alreadyChosenPokemon]}
+            />
+        </Drawer>
+    );
 
-            const value = pointRuleset.valueByPokemonID[pokemon.data.id];
-            if (value === 0)
-                return notifications.show({
-                    color: "red",
-                    title: "Banned Pokemon",
-                    message: `${pokemon.data.name} is a banned Pokemon!`,
-                });
+    const TradingDrawer = (
+        <Drawer
+            opened={isTradingOpened}
+            onClose={hideTrading}
+            title="Trading"
+            radius="md"
+            size="75%"
+            keepMounted={true}
+            position="left"
+        >
+            <Stack>
+                <Title>Game Trades</Title>
+                <GameTradesAccordion />
+                {session && (
+                    <>
+                        <Title>Make a Trade</Title>
+                        <TradeCreator />
+                    </>
+                )}
+            </Stack>
+        </Drawer>
+    );
 
-            const currentPointTotal = getPointTotal(
-                session.user.id,
-                pokemonByPlayerID,
-                pointRuleset.valueByPokemonID
-            );
+    const GameTitle = (
+        <Title className={classes.title} ta="center">
+            Game:{" "}
+            <Text
+                inherit
+                variant="gradient"
+                component="span"
+                gradient={{ from: "pink", to: "yellow" }}
+            >
+                {gameInfo.name}
+            </Text>
+        </Title>
+    );
 
-            const rulesetForPlayer = playerInfoByID[session.user.id].rules;
-            if (currentPointTotal + value > rulesetForPlayer.maxPoints)
-                return notifications.show({
-                    color: "red",
-                    title: "You don't have enough points",
-                    message: `${pokemon.data.name} is worth too many points!`,
-                });
+    const DraftStateTitle = (
+        <Title order={2}>
+            {currentTurnPlayerID
+                ? `${playerInfoByID[currentTurnPlayerID].name}'s Turn To Pick`
+                : isDraftingFinished
+                  ? "Drafting is Complete"
+                  : "Game hasn't started"}
+        </Title>
+    );
 
-            const { error } = await supabase.from(gameSelectionTable).insert([
-                {
-                    game,
-                    pokemon_id: pokemon.data.id,
-                    player: session.user.id,
-                },
-            ]);
-            if (error)
-                return notifications.show({
-                    color: "red",
-                    title: "Couldn't Select Pokemon",
-                    message: `${error.message}`,
-                });
-            notifications.show({
-                title: "Added your selection",
-                message: `You have added ${pokemon.data.name} to your team`,
+    const PokemonSelectorCol = (
+        <Stack align="left" ta="left">
+            <Title id="make-selection">Make a selection</Title>
+            <Button onClick={showRuleset}>See Point Ruleset</Button>
+            <PokemonSelector
+                onSelect={selectPokemon}
+                search={search}
+                setSearch={setSearch}
+            />
+        </Stack>
+    );
+
+    const accordionData = useMemo(() => {
+        const data = Object.entries(playerInfoByID)
+            .sort((a, b) => b[1].priority - a[1].priority)
+            .map(([playerID, playerInfo]) => {
+                const sectionInfo = [
+                    playerID,
+                    Object.values(playerInfo.selections),
+                ];
+                return sectionInfo as AccordionSectionData;
             });
-        }
-        : undefined;
+        return data;
+    }, [playerInfoByID]);
+    const PlayerSelectionsCol = (
+        <Stack align="end">
+            <Title>Player Selections</Title>
+            <Button w="30%" onClick={showTrading}>
+                Trade
+            </Button>
+            <PokemonAccordion
+                open={open}
+                setOpen={setOpen}
+                data={accordionData}
+                isMinimal={prefersMinimal}
+                allowMultiple={true}
+                defaultValue={accordionData.map((x) => x[0])}
+                sectionLabelTransformer={(playerID) => {
+                    const playerInfo = playerInfoByID[playerID];
+                    const playerPokemon = Object.values(playerInfo.selections);
+                    return `${playerInfo.name} - ${playerInfo.rules.maxPoints - getPointTotal(playerPokemon, valueByPokemonID)}/${playerInfo.rules.maxPoints} Points Left - ${playerPokemon.length}/${playerInfo.rules.maxTeamSize} Pokemon Chosen`;
+                }}
+                cardLabeler={(pokemon) =>
+                    getPointLabel(pokemon, valueByPokemonID)
+                }
+                cardOnClick={(pokemon) =>
+                    smogonOnClick(pokemon, pointRulesetInfo.generation)
+                }
+            />
+        </Stack>
+    );
 
     return (
-        <Center>
-            <Stack justify="center" ta="center" w="80%">
-                <Title className={classes.title} ta="center">
-                    Game:{" "}
-                    <Text
-                        inherit
-                        variant="gradient"
-                        component="span"
-                        gradient={{ from: "pink", to: "yellow" }}
-                    >
-                        {gameName}
-                    </Text>
-                </Title>
-                {getIsJoinable() ? (
-                    <Button onClick={joinGame}>Join Game</Button>
-                ) : (
-                    session &&
-                    !(session.user.id in playerInfoByID) && (
-                        <Text>Game isn't accepting anymore players</Text>
-                    )
-                )}
-                <Title order={3}>
-                    Point Ruleset:{" "}
-                    <Text
-                        inherit
-                        variant="gradient"
-                        component="span"
-                        gradient={{ from: "pink", to: "yellow" }}
-                        onClick={() => scrollToRuleset()}
-                        className={classes.pointer}
-                    >
-                        {pointRuleset.name}
-                    </Text>
-                </Title>
-                {currentTurnPlayerID ? (
+        <>
+            {RulesetDrawer}
+            {TradingDrawer}
+            {GameTitle}
+            <Button
+                left="0"
+                top="50%"
+                style={{ transform: "translate(-40%) rotate(90deg)" }}
+                pos="fixed"
+                onClick={showRuleset}
+            >
+                See Point Ruleset
+            </Button>
+            <Button
+                right="0"
+                top="50%"
+                style={{ transform: "translate(32%) rotate(-90deg)" }}
+                pos="fixed"
+                onClick={showTrading}
+            >
+                Trade
+            </Button>
+            <Center>
+                <Stack justify="center" ta="center" w="80%">
+                    {getIsJoinable() ? (
+                        <Button onClick={joinGame}>Join Game</Button>
+                    ) : (
+                        session &&
+                        !(session.user.id in playerInfoByID) && (
+                            <Text>Game isn't accepting anymore players</Text>
+                        )
+                    )}
                     <Title order={3}>
-                        {playerInfoByID[currentTurnPlayerID].name}'s Turn To
-                        Pick
+                        Point Ruleset:{" "}
+                        <Text
+                            inherit
+                            variant="gradient"
+                            component="span"
+                            gradient={{ from: "pink", to: "yellow" }}
+                            onClick={showRuleset}
+                            className={classes.pointer}
+                        >
+                            {pointRulesetInfo.name}
+                        </Text>
                     </Title>
-                ) : Object.keys(playerInfoByID).length < 2 ? (
-                    <Title>Game hasn't started</Title>
-                ) : (
-                    <Title>Drafting is Complete</Title>
-                )}
-                <Grid mih="100vh">
-                    <Grid.Col span={3}>
-                        <Stack align="left" ta="left">
-                            <Title ref={selectionRef}>Make a selection</Title>
-                            <PokemonSelector
-                                pointRuleset={pointRuleset}
-                                onSelect={selectPokemon}
-                                search={search}
-                                setSearch={setSearch}
-                            />
-                        </Stack>
-                    </Grid.Col>
-                    <Grid.Col ta="right" span={9}>
-                        <Stack>
-                            <Title>Player Selections</Title>
-                            <Group justify="right">
-                                <Text>Display Options:</Text>
-                                <Checkbox
-                                    checked={isMinimal}
-                                    onChange={(e) =>
-                                        setIsMinimal(e.currentTarget.checked)
-                                    }
-                                    label="Minimal View?"
-                                />
-                            </Group>
-                            <SelectionAccordion
-                                playerInfoByID={playerInfoByID}
-                                open={open}
-                                setOpen={setOpen}
-                                selectionData={pokemonByPlayerID}
-                                isMinimal={isMinimal}
-                                valueByPokemonID={pointRuleset.valueByPokemonID}
-                                cardOnClick={smogonOnClick}
-                            />
-                        </Stack>
-                    </Grid.Col>
-                </Grid>
-                <Divider ref={rulesetRef} />
-                <RulesetView
-                    ruleset={pointRuleset.id}
-                    cardOnClick={rulesetCardOnClick}
-                    extraRulePredicates={[alreadyChosenPokemon]}
-                />
-            </Stack>
-        </Center>
+                    {DraftStateTitle}
+                    <Grid mih="100vh">
+                        <Grid.Col span={3}>{PokemonSelectorCol}</Grid.Col>
+                        <Grid.Col ta="right" span={9}>
+                            {PlayerSelectionsCol}
+                        </Grid.Col>
+                    </Grid>
+                </Stack>
+            </Center>
+        </>
     );
 };
 
 export const GamePage = () => {
+    return (
+        <WholeGameProvider>
+            <_GamePage />
+        </WholeGameProvider>
+    );
+};
+
+export const _GamePage = () => {
     const { id } = useParams();
-    return id && <Game game={id} />;
+    if (!id) return <>No ID provided</>;
+
+    const { gameInfo, setGameInfo } = useContext(GameInfoContext);
+    const { gameTrades, setGameTrades } = useContext(GameTradesContext);
+    const { playerInfoByID, allPlayerInfo, setAllPlayerInfo } =
+        useContext(GamePlayersContext);
+    const { pointRulesetInfo, setPointRulesetInfo } =
+        useContext(PointRulesetContext);
+
+    const refreshGameInfo = async () => {
+        const gameInfo = await fetchGameInfo(supabase, id);
+        if (!gameInfo) return;
+        setGameInfo(gameInfo);
+    };
+
+    const refreshAllPlayerInfo = async () => {
+        const allPlayerInfo = await fetchAllPlayerInfo(supabase, id);
+        if (!allPlayerInfo) return;
+        setAllPlayerInfo(allPlayerInfo);
+    };
+
+    const refreshPointRulesetInfo = async () => {
+        const pointRulesetInfo = await fetchPointRulesetInfoFromGameID(
+            supabase,
+            id
+        );
+        if (!pointRulesetInfo) return;
+        setPointRulesetInfo(pointRulesetInfo);
+    };
+
+    const refreshGameTrades = async () => {
+        const gameTrades = await fetchGameTrades(supabase, id);
+        if (!gameTrades) return;
+        setGameTrades(gameTrades);
+    };
+
+    useEffect(() => {
+        refreshGameInfo();
+        refreshGameTrades();
+        refreshAllPlayerInfo();
+        refreshPointRulesetInfo();
+
+        const select = supabase
+            .channel("game-selections")
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: gameSelectionTable,
+                    filter: `game=eq.${id}`,
+                },
+                (payload) => {
+                    console.log("Change received for selections!", payload);
+                    refreshAllPlayerInfo();
+                    notifications.show({
+                        title: "Update",
+                        message: "A team update was triggered",
+                    });
+                }
+            )
+            .subscribe();
+        const join = supabase
+            .channel("game-joining")
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: gamePlayerTable,
+                    filter: `game=eq.${id}`,
+                },
+                (payload) => {
+                    console.log("Change received for players!", payload);
+                    refreshAllPlayerInfo();
+                    notifications.show({
+                        title: "Update",
+                        message: "A player update was triggered",
+                    });
+                }
+            )
+            .subscribe();
+        return () => {
+            supabase.removeChannel(select);
+            supabase.removeChannel(join);
+        };
+    }, [id]);
+
+    useEffect(() => {
+        if (!gameTrades || !playerInfoByID) return;
+
+        const trades = supabase
+            .channel("new-game-trade-confirmations")
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: tradeConfirmationTable,
+                    filter: `trade=in.(${gameTrades.map((t) => t.id).join(",")})`,
+                },
+                (payload) => {
+                    console.log("New Trade Confirmation Received!", payload);
+                    refreshGameTrades();
+                    const playerName =
+                        playerInfoByID[(payload.new as any).participant].name;
+                    notifications.show({
+                        title: "Trade Update",
+                        message: `${playerName} confirmed trade ${(payload.new as any).trade}`,
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: tradeTable,
+                    filter: `game=eq.${id}`,
+                },
+                (payload) => {
+                    console.log("Trade Update Received!", payload);
+                    refreshGameTrades();
+                    const action =
+                        payload.eventType === "INSERT"
+                            ? "created"
+                            : "executed/rejcted";
+                    notifications.show({
+                        title: "Trade Update",
+                        message: `Someone ${action} a trade!`,
+                    });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(trades);
+        };
+    }, [gameTrades, playerInfoByID]);
+
+    if (!(gameInfo && allPlayerInfo && pointRulesetInfo && gameTrades))
+        return <Loading />;
+
+    return <Game />;
 };

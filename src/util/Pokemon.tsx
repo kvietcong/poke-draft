@@ -1,6 +1,7 @@
 import { Pokemon } from "@/types";
 import { Dex, ModdedDex, toID } from "@pkmn/dex";
 import { Icons, PokemonSprite, Sprites } from "@pkmn/img";
+import getGenerationName from "./GenerationName";
 
 export const getPokemon = (id: string, dex?: ModdedDex): Pokemon => {
     const pokemonID = toID(id);
@@ -30,3 +31,18 @@ export const searchPokemon = (
     };
     return pokemon;
 };
+
+export const fetchMovesByPokemon = async (dex: ModdedDex) => {
+    const movesByPokemon: { [id: string]: string[] } = {};
+    for (const p of dex.species.all()) {
+        movesByPokemon[p.id] = Object.keys(
+            (await dex.learnsets.getByID(p.id)).learnset ?? {}
+        );
+    }
+    return movesByPokemon;
+};
+
+export const smogonOnClick = (pokemon: Pokemon, generation?: number) =>
+    window.open(
+        encodeURI(`https://www.smogon.com/dex/${getGenerationName(generation)}/pokemon/${pokemon.data.name}/`)
+    );
