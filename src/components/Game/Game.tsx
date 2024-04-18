@@ -597,17 +597,6 @@ const Game = ({ game }: { game: string }) => {
                         <Text>Game isn't accepting anymore players</Text>
                     )
                 )}
-                <Title order={4}>
-                    Player Rules:{" "}
-                    <Text
-                        inherit
-                        variant="gradient"
-                        component="span"
-                        gradient={{ from: "pink", to: "yellow" }}
-                    >
-                        Something
-                    </Text>
-                </Title>
                 <Title order={3}>
                     Point Ruleset:{" "}
                     <Text
