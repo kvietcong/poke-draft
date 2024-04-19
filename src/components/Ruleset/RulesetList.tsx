@@ -12,26 +12,16 @@ import {
     Anchor,
 } from "@mantine/core";
 import { Link } from "react-router-dom";
-import { pointRulesetTable } from "@/util/DatabaseTables";
+import { fetchRulesets } from "@/util/database";
 
 export const RulesetListView = () => {
     const [rulesets, setRulesets] = useState<[string, string][]>([]);
 
-    const fetchRulesets = async () => {
-        let { data, error } = await supabase
-            .from(pointRulesetTable)
-            .select("id, name");
-        if (error) return console.error(error);
-        if (!data) return console.log("No data received!");
-        const newRulesets = data.map<[string, string]>((val) => [
-            val.id,
-            val.name,
-        ]);
-        setRulesets(newRulesets);
-    };
-
     useEffect(() => {
-        fetchRulesets();
+        (async () => {
+            const rulesets = await fetchRulesets(supabase);
+            if (rulesets) setRulesets(rulesets);
+        })();
     }, []);
 
     return (
