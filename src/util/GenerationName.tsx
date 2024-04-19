@@ -10,7 +10,7 @@ export const generationSmogonName: { [id: string]: string } = {
     9: "SV",
 };
 
-export const getGenerationName = (gen: number) =>
-    generationSmogonName[gen] || "SV";
+export const getGenerationName = (gen?: number) =>
+    generationSmogonName[gen ?? 0] || "SV";
 
 export default getGenerationName;

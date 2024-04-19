@@ -8,13 +8,7 @@ import {
 } from "react";
 import { useParams } from "react-router-dom";
 import supabase from "@/supabase";
-import {
-    gamePlayerTable,
-    gameSelectionTable,
-    gameTable,
-    pointRuleTable,
-    pointRulesetTable,
-} from "@/util/DatabaseTables";
+import { gamePlayerTable, gameSelectionTable } from "@/util/DatabaseTables";
 import {
     Accordion,
     Button,
@@ -37,21 +31,20 @@ import {
     PokemonPill,
     PokemonTooltip,
 } from "@/components/PokeView/View";
-import { Dex } from "@pkmn/dex";
 import { Loading } from "../Loading/Loading";
 import { useDebouncedState, useScrollIntoView } from "@mantine/hooks";
 import { AppContext } from "@/App";
 import { notifications } from "@mantine/notifications";
 import { RulesetView } from "../Ruleset/Ruleset";
 import getGenerationName from "@/util/GenerationName";
-import { getPokemon, searchPokemon } from "@/util/Pokemon";
-
-type PointRulesetInfo = {
-    id: string;
-    generation: number;
-    name: string;
-    valueByPokemonID: { [pokemonID: string]: number };
-};
+import { searchPokemon } from "@/util/Pokemon";
+import {
+    PlayerInfo,
+    PointRulesetInfo,
+    fetchGameInfo,
+    fetchPlayerInfoByID,
+    fetchPokemonByPlayerID,
+} from "@/util/database";
 
 type ValueByPokemonID = { [pokemonID: string]: number };
 const getPointLabel = (
@@ -67,11 +60,11 @@ const getPointLabel = (
 };
 
 const getPointTotal = (
-    player: string,
+    playerID: string,
     selectionData: SelectionData,
     valueByPokemonID: ValueByPokemonID
 ): number => {
-    const pokemons = selectionData[player] ?? [];
+    const pokemons = selectionData[playerID] ?? [];
     return pokemons.reduce((acc, next) => {
         return acc + (valueByPokemonID[next.data.id] ?? 1);
     }, 0);
@@ -83,20 +76,16 @@ export const SelectionAccordion = ({
     setOpen,
     isMinimal,
     selectionData,
-    playerNameByID,
+    playerInfoByID,
     valueByPokemonID,
-    rulesByPlayerID,
-    playerPriorityByID,
     cardOnClick,
 }: {
     open: string[];
     setOpen: Dispatch<SetStateAction<string[]>>;
     isMinimal: boolean;
     selectionData: SelectionData;
-    playerNameByID: { [id: string]: string };
+    playerInfoByID: { [id: string]: PlayerInfo };
     valueByPokemonID: ValueByPokemonID;
-    rulesByPlayerID: { [id: string]: PlayerRule };
-    playerPriorityByID: { [id: string]: number };
     cardOnClick?: CardOnClick;
 }) => {
     const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
@@ -107,26 +96,21 @@ export const SelectionAccordion = ({
             multiple={true}
             variant={isMinimal ? "filled" : "separated"}
         >
-            {Object.entries(playerNameByID)
-                .sort(
-                    (a, b) =>
-                        (playerPriorityByID[b[0]] ?? 0) -
-                        (playerPriorityByID[a[0]] ?? 0)
-                )
-                .map(([playerID, playerName]) => (
+            {Object.entries(playerInfoByID)
+                .sort((a, b) => b[1].priority - a[1].priority)
+                .map(([playerID, playerInfo]) => (
                     <Accordion.Item key={playerID} value={playerID}>
                         <Accordion.Control>
                             <Text>
-                                {`${playerName} `}
-                                {` - ${
-                                    rulesByPlayerID[playerID].maxPoints -
+                                {`${playerInfo.name} `}
+                                {` - ${playerInfo.rules.maxPoints -
                                     getPointTotal(
                                         playerID,
                                         selectionData,
                                         valueByPokemonID
                                     )
-                                }/${rulesByPlayerID[playerID].maxPoints} Points Left`}
-                                {` - ${selectionData[playerID].length}/${rulesByPlayerID[playerID].maxTeamSize} Pokemon Chosen`}
+                                    }/${playerInfo.rules.maxPoints} Points Left`}
+                                {` - ${selectionData[playerID].length}/${playerInfo.rules.maxTeamSize} Pokemon Chosen`}
                             </Text>
                         </Accordion.Control>
                         <Accordion.Panel>
@@ -158,18 +142,21 @@ export const SelectionAccordion = ({
     );
 };
 
+const smogonOnClick = (pokemon: Pokemon, generation?: number) =>
+    window.open(
+        `https://www.smogon.com/dex/${getGenerationName(generation)}/pokemon/${pokemon.data.name}/`
+    );
+
 const PokemonSelector = ({
     pointRuleset,
     onSelect,
     search,
     setSearch,
-    cardOnClick,
 }: {
     pointRuleset: PointRulesetInfo;
     onSelect?: (pokemon: Pokemon) => any;
     search: string;
     setSearch: (newValue: string) => void;
-    cardOnClick?: CardOnClick;
 }) => {
     const pokemon = useMemo(() => {
         return searchPokemon(search.trim(), pointRuleset.generation);
@@ -186,14 +173,23 @@ const PokemonSelector = ({
                 {getPointLabel(pokemon, pointRuleset.valueByPokemonID)}
             </Title>
             <Center>
-                <PokemonCard pokemon={pokemon} onClick={cardOnClick} />
+                <PokemonCard
+                    pokemon={pokemon}
+                    onClick={() =>
+                        smogonOnClick(pokemon, pointRuleset.generation)
+                    }
+                />
             </Center>
             <Title>Stats</Title>
             <BasicStatDisplay pokemon={pokemon} />
         </>
     );
 
-    const SearchError = <Title>Couldn't find {search}</Title>;
+    let error_msg = null;
+    if (!pokemon.data.exists) error_msg = `Couldn't find ${search}`
+    else if (pokemon.data.gen > pointRuleset.generation) error_msg = `${pokemon.data.name} isn't in generation ${pointRuleset.generation}`
+
+    const SearchError = error_msg && <Title order={2}>{error_msg}</Title>;
 
     return (
         <>
@@ -203,16 +199,10 @@ const PokemonSelector = ({
                 defaultValue={search}
                 onChange={(e) => setSearch(e.currentTarget.value)}
             />
-            {search.trim() &&
-                (pokemon.data.exists &&
-                pokemon.data.gen <= pointRuleset.generation
-                    ? PokemonInfo
-                    : SearchError)}
+            {search.trim() && (SearchError || PokemonInfo)}
         </>
     );
 };
-
-type PlayerRule = { maxPoints: number; maxTeamSize: number };
 
 const Game = ({ game }: { game: string }) => {
     const { session } = useContext(AppContext);
@@ -221,15 +211,10 @@ const Game = ({ game }: { game: string }) => {
 
     const [gameName, setGameName] = useState<string>("");
 
-    const [playerNameByID, setPlayerNameByID] = useState<{
-        [id: string]: string;
+    const [playerInfoByID, setPlayerInfoByID] = useState<{
+        [id: string]: PlayerInfo;
     }>();
-    const [playerPriorityByID, setPlayerPriorityByID] = useState<{
-        [id: string]: number;
-    }>();
-    const [rulesByPlayerID, setRulesByPlayerID] = useState<{
-        [id: string]: PlayerRule;
-    }>();
+
     const [pokemonByPlayerID, setPokemonByPlayerID] = useState<{
         [id: string]: Pokemon[];
     }>();
@@ -250,116 +235,6 @@ const Game = ({ game }: { game: string }) => {
     const { scrollIntoView: scrollToRuleset, targetRef: rulesetRef } =
         useScrollIntoView<HTMLDivElement>();
 
-    const fetchGame = async (game: string) => {
-        let { data, error } = await supabase
-            .from(gameTable)
-            .select(
-                `name,
-                ${pointRulesetTable} (id, name, generation,
-                    ${pointRuleTable} (pokemon_id, value))`
-            )
-            .eq("id", game)
-            .returns<
-                {
-                    name: string;
-                    [pointRulesetTable]: {
-                        id: string;
-                        name: string;
-                        generation: number;
-                        [pointRuleTable]: {
-                            pokemon_id: string;
-                            value: number;
-                        }[];
-                    };
-                }[]
-            >()
-            .limit(1)
-            .single();
-        if (error) return console.error(error);
-        if (!data) return console.log("No data received!");
-        setGameName(data.name);
-        const valueByPokemonID = data[pointRulesetTable][
-            pointRuleTable
-        ].reduce<{
-            [pokemonID: string]: number;
-        }>((acc, next) => {
-            acc[next.pokemon_id] = next.value;
-            return acc;
-        }, {});
-        setPointRuleset({
-            id: data[pointRulesetTable].id,
-            name: data[pointRulesetTable].name,
-            generation: data[pointRulesetTable].generation,
-            valueByPokemonID,
-        });
-    };
-
-    const fetchPlayers = async (game: string) => {
-        let { data, error } = await supabase
-            .from(gamePlayerTable)
-            .select(
-                "player (id, display_name), priority, max_points, max_team_size"
-            )
-            .eq("game", game)
-            .returns<
-                {
-                    player: { id: string; display_name: string };
-                    priority: number;
-                    max_points: number;
-                    max_team_size: number;
-                }[]
-            >();
-        if (error) return console.error(error);
-        if (!data) return console.log("No data received!");
-        setPlayerNameByID(
-            data.reduce<{ [id: string]: string }>((acc, next) => {
-                acc[next.player.id] = next.player.display_name;
-                return acc;
-            }, {})
-        );
-        setPlayerPriorityByID(
-            data.reduce<{ [id: string]: number }>((acc, next) => {
-                acc[next.player.id] = next.priority;
-                return acc;
-            }, {})
-        );
-        setRulesByPlayerID(
-            data.reduce<{ [id: string]: PlayerRule }>((acc, next) => {
-                acc[next.player.id] = {
-                    maxPoints: next.max_points,
-                    maxTeamSize: next.max_team_size,
-                };
-                return acc;
-            }, {})
-        );
-    };
-
-    const fetchPokemonByPlayer = async (
-        game: string,
-        pointRuleset: PointRulesetInfo,
-        openAll?: boolean
-    ) => {
-        let { data, error } = await supabase
-            .from(gameSelectionTable)
-            .select("player, pokemon_id")
-            .eq("game", game);
-        if (error) return console.error(error);
-        if (!data) return console.log("No data received!");
-        const dex = Dex.forGen(pointRuleset.generation);
-        const newPokemonByPlayer = data.reduce<{ [id: string]: Pokemon[] }>(
-            (acc, next) => {
-                const player = next.player;
-                const pokemon = getPokemon(next.pokemon_id, dex);
-                if (player in acc) acc[player].push(pokemon);
-                else acc[player] = [pokemon];
-                return acc;
-            },
-            {}
-        );
-        setPokemonByPlayerID(newPokemonByPlayer);
-        if (openAll) setOpen(Object.keys(newPokemonByPlayer));
-    };
-
     useEffect(() => {
         const select = supabase
             .channel("game-selections")
@@ -373,7 +248,7 @@ const Game = ({ game }: { game: string }) => {
                 },
                 (payload) => {
                     console.log("Change received for selections!", payload);
-                    setTrigger((last) => last + 1);
+                    setTrigger((last) => last + 1); // Trigger mechanism, b/c putting function here captures stale values. Def a better way to do this so TODO
                     notifications.show({
                         title: "Update",
                         message: "A team update was triggered",
@@ -409,32 +284,39 @@ const Game = ({ game }: { game: string }) => {
 
     useEffect(() => {
         if (!game) return;
-        fetchGame(game);
-        fetchPlayers(game);
+        (async () => {
+            const gameInfo = await fetchGameInfo(supabase, game);
+            if (gameInfo) {
+                setGameName(gameInfo.name);
+                setPointRuleset(gameInfo.pointRuleset);
+            }
+            const playerInfoByID = await fetchPlayerInfoByID(supabase, game);
+            if (playerInfoByID) setPlayerInfoByID(playerInfoByID);
+        })();
     }, [game, trigger]);
 
     useEffect(() => {
         if (!game || !pointRuleset) return;
-        fetchPokemonByPlayer(game, pointRuleset, true);
+        (async () => {
+            const pokemonByPlayerID = await fetchPokemonByPlayerID(
+                supabase,
+                game,
+                pointRuleset
+            );
+            if (pokemonByPlayerID) {
+                setPokemonByPlayerID(pokemonByPlayerID);
+                setOpen(Object.keys(pokemonByPlayerID));
+            }
+        })();
     }, [game, pointRuleset, trigger]);
 
-    if (
-        !pointRuleset ||
-        !rulesByPlayerID ||
-        !playerNameByID ||
-        !pokemonByPlayerID ||
-        !playerPriorityByID
-    )
+    if (!pointRuleset || !playerInfoByID || !pokemonByPlayerID || false)
         return <Loading />;
 
-    const selectCardOnClick = (pokemon: Pokemon) =>
-        window.open(
-            `https://www.smogon.com/dex/${getGenerationName(pointRuleset.generation)}/pokemon/${pokemon.data.name}/`
-        );
-
     const getCurrentTurnPlayerID = () => {
-        if (Object.keys(playerNameByID).length < 2) return;
-        const totalByID = Object.keys(playerNameByID).reduce<{
+        const ids = Object.keys(playerInfoByID);
+        if (ids.length < 2) return;
+        const totalByID = Object.keys(playerInfoByID).reduce<{
             [id: string]: number;
         }>((acc, next) => {
             acc[next] = getPointTotal(
@@ -445,9 +327,8 @@ const Game = ({ game }: { game: string }) => {
             return acc;
         }, {});
 
-        const ids = Object.keys(playerNameByID);
         const filteredForLimits = ids.filter((id) => {
-            const rulesetForPlayer = rulesByPlayerID[id];
+            const rulesetForPlayer = playerInfoByID[id].rules;
             const hasPoints = totalByID[id] < rulesetForPlayer.maxPoints;
             const enoughRoom =
                 (pokemonByPlayerID[id] ?? []).length <
@@ -466,7 +347,8 @@ const Game = ({ game }: { game: string }) => {
 
         filteredForRound.sort(
             (a, b) =>
-                (playerPriorityByID[b] ?? 0) - (playerPriorityByID[a] ?? 0)
+                (playerInfoByID[b].priority ?? 0) -
+                (playerInfoByID[a].priority ?? 0)
         );
         if (lowestCount % 2 == 1) filteredForRound.reverse();
 
@@ -480,12 +362,12 @@ const Game = ({ game }: { game: string }) => {
     };
 
     const getIsJoinable = () => {
-        const counts = Object.keys(playerNameByID).map(
+        const counts = Object.keys(playerInfoByID).map(
             (id) => pokemonByPlayerID[id]?.length ?? 0
         );
         const lowestCount = counts.length ? Math.min(...counts) : 0;
         return (
-            lowestCount === 0 && session && !(session.user.id in playerNameByID)
+            lowestCount === 0 && session && !(session.user.id in playerInfoByID)
         );
     };
 
@@ -519,60 +401,60 @@ const Game = ({ game }: { game: string }) => {
 
     const selectPokemon = getIsMyTurn()
         ? async (pokemon: Pokemon) => {
-              if (!session)
-                  return notifications.show({
-                      color: "red",
-                      title: "Not Logged In",
-                      message: "You need to be logged in! How did you do this?",
-                  });
-              if (!(session.user.id in playerNameByID))
-                  return notifications.show({
-                      color: "red",
-                      title: "Not in the Game",
-                      message:
-                          "You need to be in the game! How did you do this?",
-                  });
+            if (!session)
+                return notifications.show({
+                    color: "red",
+                    title: "Not Logged In",
+                    message: "You need to be logged in! How did you do this?",
+                });
+            if (!(session.user.id in playerInfoByID))
+                return notifications.show({
+                    color: "red",
+                    title: "Not in the Game",
+                    message:
+                        "You need to be in the game! How did you do this?",
+                });
 
-              const value = pointRuleset.valueByPokemonID[pokemon.data.id];
-              if (value === 0)
-                  return notifications.show({
-                      color: "red",
-                      title: "Banned Pokemon",
-                      message: `${pokemon.data.name} is a banned Pokemon!`,
-                  });
+            const value = pointRuleset.valueByPokemonID[pokemon.data.id];
+            if (value === 0)
+                return notifications.show({
+                    color: "red",
+                    title: "Banned Pokemon",
+                    message: `${pokemon.data.name} is a banned Pokemon!`,
+                });
 
-              const currentPointTotal = getPointTotal(
-                  session.user.id,
-                  pokemonByPlayerID,
-                  pointRuleset.valueByPokemonID
-              );
+            const currentPointTotal = getPointTotal(
+                session.user.id,
+                pokemonByPlayerID,
+                pointRuleset.valueByPokemonID
+            );
 
-              const rulesetForPlayer = rulesByPlayerID[session.user.id];
-              if (currentPointTotal + value > rulesetForPlayer.maxPoints)
-                  return notifications.show({
-                      color: "red",
-                      title: "You don't have enough points",
-                      message: `${pokemon.data.name} is worth too many points!`,
-                  });
+            const rulesetForPlayer = playerInfoByID[session.user.id].rules;
+            if (currentPointTotal + value > rulesetForPlayer.maxPoints)
+                return notifications.show({
+                    color: "red",
+                    title: "You don't have enough points",
+                    message: `${pokemon.data.name} is worth too many points!`,
+                });
 
-              const { error } = await supabase.from(gameSelectionTable).insert([
-                  {
-                      game,
-                      pokemon_id: pokemon.data.id,
-                      player: session.user.id,
-                  },
-              ]);
-              if (error)
-                  return notifications.show({
-                      color: "red",
-                      title: "Couldn't Select Pokemon",
-                      message: `${error.message}`,
-                  });
-              notifications.show({
-                  title: "Added your selection",
-                  message: `You have added ${pokemon.data.name} to your team`,
-              });
-          }
+            const { error } = await supabase.from(gameSelectionTable).insert([
+                {
+                    game,
+                    pokemon_id: pokemon.data.id,
+                    player: session.user.id,
+                },
+            ]);
+            if (error)
+                return notifications.show({
+                    color: "red",
+                    title: "Couldn't Select Pokemon",
+                    message: `${error.message}`,
+                });
+            notifications.show({
+                title: "Added your selection",
+                message: `You have added ${pokemon.data.name} to your team`,
+            });
+        }
         : undefined;
 
     return (
@@ -593,7 +475,7 @@ const Game = ({ game }: { game: string }) => {
                     <Button onClick={joinGame}>Join Game</Button>
                 ) : (
                     session &&
-                    !(session.user.id in playerNameByID) && (
+                    !(session.user.id in playerInfoByID) && (
                         <Text>Game isn't accepting anymore players</Text>
                     )
                 )}
@@ -612,9 +494,10 @@ const Game = ({ game }: { game: string }) => {
                 </Title>
                 {currentTurnPlayerID ? (
                     <Title order={3}>
-                        {playerNameByID[currentTurnPlayerID]}'s Turn To Pick
+                        {playerInfoByID[currentTurnPlayerID].name}'s Turn To
+                        Pick
                     </Title>
-                ) : Object.keys(playerNameByID).length < 2 ? (
+                ) : Object.keys(playerInfoByID).length < 2 ? (
                     <Title>Game hasn't started</Title>
                 ) : (
                     <Title>Drafting is Complete</Title>
@@ -628,7 +511,6 @@ const Game = ({ game }: { game: string }) => {
                                 onSelect={selectPokemon}
                                 search={search}
                                 setSearch={setSearch}
-                                cardOnClick={selectCardOnClick}
                             />
                         </Stack>
                     </Grid.Col>
@@ -646,15 +528,13 @@ const Game = ({ game }: { game: string }) => {
                                 />
                             </Group>
                             <SelectionAccordion
-                                playerPriorityByID={playerPriorityByID}
+                                playerInfoByID={playerInfoByID}
                                 open={open}
                                 setOpen={setOpen}
                                 selectionData={pokemonByPlayerID}
                                 isMinimal={isMinimal}
-                                playerNameByID={playerNameByID}
                                 valueByPokemonID={pointRuleset.valueByPokemonID}
-                                rulesByPlayerID={rulesByPlayerID}
-                                cardOnClick={selectCardOnClick}
+                                cardOnClick={smogonOnClick}
                             />
                         </Stack>
                     </Grid.Col>

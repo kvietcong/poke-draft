@@ -21,6 +21,7 @@ import { Link } from "react-router-dom";
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle/ColorSchemeToggle";
 import { profileTable } from "@/util/DatabaseTables";
 import { notifications } from "@mantine/notifications";
+import { changeUsername, fetchUsername } from "@/util/database";
 
 export const LoginView = () => {
     const { colorScheme } = useMantineColorScheme();
@@ -70,20 +71,6 @@ export const MyProfileView = () => {
         );
 
     const [username, setUsername] = useState("There!");
-    const fetchUsername = async () => {
-        const { data, error } = await supabase
-            .from(profileTable)
-            .select("display_name")
-            .eq("id", session.user.id)
-            .single();
-        if (error)
-            return notifications.show({
-                color: "red",
-                title: "Couldn't get username",
-                message: error.message,
-            });
-        setUsername(data.display_name);
-    };
 
     const [newUsername, setNewUsername] = useState("");
     const changeName = async () => {
@@ -94,10 +81,7 @@ export const MyProfileView = () => {
                 title: "Invalid Username",
                 message: `You can't use "${newUsernameClean}" as your username`,
             });
-        const { error } = await supabase
-            .from(profileTable)
-            .update({ display_name: newUsernameClean })
-            .eq("id", session.user.id);
+        const error = await changeUsername(supabase, session, newUsernameClean);
         if (error)
             return notifications.show({
                 color: "red",
@@ -108,7 +92,10 @@ export const MyProfileView = () => {
     };
 
     useEffect(() => {
-        fetchUsername();
+        (async () => {
+            const username = await fetchUsername(supabase, session);
+            setUsername(username);
+        })();
     }, [session]);
 
     return (

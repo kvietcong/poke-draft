@@ -30,7 +30,6 @@ import {
     useDisclosure,
     useWindowScroll,
 } from "@mantine/hooks";
-import { pointRuleTable, pointRulesetTable } from "@/util/DatabaseTables";
 import { Pokemon } from "@/types";
 import {
     CardOnClick,
@@ -40,9 +39,12 @@ import {
 } from "@/components/PokeView/View";
 import getGenerationName from "@/util/GenerationName";
 import getStatColor from "@/util/StatColors";
-import { getPokemon } from "@/util/Pokemon";
-
-type PointRule = [value: string, pokemonData: Pokemon[]];
+import {
+    PointRule,
+    fetchMovesByPokemon,
+    fetchPointRules,
+    fetchRulesetInfo,
+} from "@/util/database";
 
 export const RulesetAccordion = ({
     open,
@@ -104,9 +106,11 @@ export const RulesetView = ({
     cardOnClick?: CardOnClick;
     extraRulePredicates?: ((p: Pokemon) => boolean)[];
 }) => {
-    const [rules, setRules] = useState<PointRule[]>([]);
-    const [rulesetName, setRulesetName] = useState<string>("");
-    const [rulesetGeneration, setRulesetGeneration] = useState(1);
+    const [pointRules, setPointRules] = useState<PointRule[]>([]);
+    const [rulesetInfo, setRulesetInfo] = useState<{
+        name: string;
+        generation: number;
+    }>();
 
     const [name, setName] = useDebouncedState("", 300);
     const [fuzzyLevel, setFuzzyLevel] = useState(0.2);
@@ -138,29 +142,18 @@ export const RulesetView = ({
 
     const defaultCardOnClick = (pokemon: Pokemon) =>
         window.open(
-            `https://www.smogon.com/dex/${getGenerationName(rulesetGeneration)}/pokemon/${pokemon.data.name}/`
+            `https://www.smogon.com/dex/${getGenerationName(rulesetInfo?.generation)}/pokemon/${pokemon.data.name}/`
         );
 
     const dex = useMemo(() => {
-        return Dex.forGen(rulesetGeneration);
-    }, [rulesetGeneration]);
+        if (!rulesetInfo) return Dex;
+        return Dex.forGen(rulesetInfo.generation);
+    }, [rulesetInfo]);
 
     const [movesByPokemon, setMovesByPokemon] = useState<{
         [id: string]: string[];
     }>({});
-    const fetchMovesByPokemon = async () => {
-        const newMovesByPokemon: { [id: string]: string[] } = {};
-        for (const p of dex.species.all()) {
-            newMovesByPokemon[p.id] = Object.keys(
-                (await dex.learnsets.getByID(p.id)).learnset ?? {}
-            );
-        }
-        setMovesByPokemon(newMovesByPokemon);
-    };
 
-    useEffect(() => {
-        fetchMovesByPokemon();
-    }, [dex]);
     const handleBaseStatsFilterChange =
         (label: string) => (newValue: number) => {
             setBaseStatsFilter((prevValues) => ({
@@ -170,7 +163,7 @@ export const RulesetView = ({
         };
 
     const nameFuzzySearcher = useMemo(() => {
-        const names = rules.reduce<{ name: string; id: string }[]>(
+        const names = pointRules.reduce<{ name: string; id: string }[]>(
             (acc, next) => {
                 const namesAndIDs = next[1].map((pokemon) => ({
                     name: pokemon.data.name as string,
@@ -186,7 +179,7 @@ export const RulesetView = ({
             threshold: fuzzyLevel,
         });
         return result;
-    }, [rules, fuzzyLevel]);
+    }, [pointRules, fuzzyLevel]);
 
     const filteredRules = useMemo(() => {
         const predicates = [(_: Pokemon) => true];
@@ -241,7 +234,7 @@ export const RulesetView = ({
                     ([label, value]) =>
                         value <=
                         pokemon.data.baseStats[
-                            statAbbreviations.get(label.toLowerCase()) ?? "hp"
+                        statAbbreviations.get(label.toLowerCase()) ?? "hp"
                         ]
                 );
             };
@@ -250,7 +243,7 @@ export const RulesetView = ({
         if (extraRulePredicates) predicates.push(...extraRulePredicates);
         const doesPokemonMatch = (pokemon: Pokemon) =>
             predicates.every((predicate) => predicate(pokemon));
-        const result = rules.reduce<PointRule[]>((acc, next) => {
+        const result = pointRules.reduce<PointRule[]>((acc, next) => {
             const filteredPokemon = next[1].filter(doesPokemonMatch);
             if (filteredPokemon.length) acc.push([next[0], filteredPokemon]);
             return acc;
@@ -258,7 +251,7 @@ export const RulesetView = ({
         return result;
     }, [
         name,
-        rules,
+        pointRules,
         types,
         movesFilter,
         willMatchAllTypes,
@@ -268,59 +261,22 @@ export const RulesetView = ({
         baseStatsFilter,
     ]);
 
-    const fetchRuleset = async (ruleset: number | string) => {
-        let { data, error } = await supabase
-            .from(pointRulesetTable)
-            .select("name, generation")
-            .eq("id", ruleset)
-            .limit(1);
-        if (error) return console.error(error);
-        if (!data) return console.log("No data received!");
-        setRulesetName(data[0].name);
-        setRulesetGeneration(data[0].generation);
-    };
-
-    const fetchRules = async (ruleset: string) => {
-        let { data, error } = await supabase
-            .from(pointRuleTable)
-            .select("value, pokemon_id")
-            .eq("point_ruleset", ruleset);
-        if (error) return console.error(error);
-        if (!data) return console.log("No data received!");
-
-        const zeroThenHiToLo = (
-            a: [string, Pokemon[]],
-            b: [string, Pokemon[]]
-        ) => {
-            const valA = parseInt(a[0]);
-            const valB = parseInt(b[0]);
-            if (valA === 0) return -1;
-            else if (valB === 0) return 1;
-            else return valB - valA;
+    useEffect(() => {
+        async () => {
+            setMovesByPokemon(await fetchMovesByPokemon(dex));
         };
-        const getPokemonFromData = (
-            accumulated: { [value: string]: Pokemon[] },
-            next: { value: number; pokemon_id: string }
-        ) => {
-            const { value, pokemon_id }: { value: number; pokemon_id: string } =
-                next;
-            const key = value.toString();
-            if (!accumulated[key]) accumulated[value] = [];
-            accumulated[key].push(getPokemon(pokemon_id));
-            return accumulated;
-        };
-        const pointRules: PointRule[] = Object.entries(
-            data.reduce<{ [id: string]: Pokemon[] }>(getPokemonFromData, {})
-        ).sort(zeroThenHiToLo);
-        setRules(pointRules);
-    };
+    }, [dex]);
 
     useEffect(() => {
-        fetchRuleset(ruleset);
-        fetchRules(ruleset);
+        (async () => {
+            const rulesetInfo = await fetchRulesetInfo(supabase, ruleset);
+            if (rulesetInfo) setRulesetInfo(rulesetInfo);
+            const pointRules = await fetchPointRules(supabase, ruleset);
+            if (pointRules) setPointRules(pointRules);
+        })();
     }, [ruleset, dex]);
 
-    if (!rulesetName || !rules) return <Loading />;
+    if (!rulesetInfo || !pointRules) return <Loading />;
     const theMoves = Object.values(
         dex.moves.all().reduce<{
             [id: string]: { value: string; label: string };
@@ -343,7 +299,7 @@ export const RulesetView = ({
                     component="span"
                     gradient={{ from: "pink", to: "yellow" }}
                 >
-                    {rulesetName}
+                    {rulesetInfo.name}
                 </Text>
             </Title>
             <Group>
@@ -456,9 +412,9 @@ export const RulesetView = ({
                         setOpen(
                             open.length
                                 ? []
-                                : Object.values(rules)
-                                      .map((x) => x[0])
-                                      .filter((x) => x != "0")
+                                : Object.values(pointRules)
+                                    .map((x) => x[0])
+                                    .filter((x) => x != "0")
                         )
                     }
                 >
