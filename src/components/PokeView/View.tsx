@@ -1,9 +1,8 @@
 import classes from "./View.module.css";
 import appClasses from "@/App.module.css";
-import { ReactNode } from "react";
+import { Dispatch, ReactNode, SetStateAction } from "react";
 import { getTypeColor } from "@/util/PokemonColors";
 import { getStatColor } from "@/util/StatColors";
-
 import {
     Card,
     Image,
@@ -16,18 +15,17 @@ import {
     FloatingPosition,
     Group,
     Flex,
+    Accordion,
 } from "@mantine/core";
-import getGenerationName from "@/util/GenerationName";
 import { Pokemon } from "@/types";
 import { useClipboard } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { Dex, TypeName } from "@pkmn/dex";
+import { smogonOnClick } from "@/util/Pokemon";
 
-export type CardOnClick = (pokemon: Pokemon) => void;
+export type CardOnClick = (pokemon: Pokemon, event: React.MouseEvent) => void;
 const defaultCardOnClick = (pokemon: Pokemon) =>
-    window.open(
-        `https://www.smogon.com/dex/${getGenerationName(pokemon.data.gen)}/pokemon/${pokemon.data.name}/`
-    );
+    smogonOnClick(pokemon, pokemon.data.gen);
 
 const getTypesByDamageMultiplier = (
     types: [TypeName] | [TypeName, TypeName]
@@ -168,7 +166,7 @@ export const PokemonCard = ({
                 mah={100}
                 fit="contain"
                 radius={15}
-                onClick={() => onCardClick(pokemon)}
+                onClick={(e) => onCardClick(pokemon, e)}
                 className={[appClasses.pointer, classes.glow].join(" ")}
             />
             <Tooltip label="Click to copy ID" position="bottom">
@@ -251,7 +249,7 @@ export const PokemonPill = ({
     return (
         <Badge
             className={appClasses.pointer}
-            onClick={(_) => onCardClick(pokemon)}
+            onClick={(e) => onCardClick(pokemon, e)}
             color={primaryColor}
             h={40}
             style={{
@@ -267,5 +265,82 @@ export const PokemonPill = ({
                 {pokemon.data.name}
             </Group>
         </Badge>
+    );
+};
+
+export type AccordionSectionData = [label: string, pokemonData: Pokemon[]];
+export type AccordionData = AccordionSectionData[];
+export const PokemonAccordion = ({
+    data,
+    open,
+    setOpen,
+    isMinimal,
+    cardOnClick,
+    cardLabeler,
+    defaultValue,
+    allowMultiple,
+    sectionLabelTransformer,
+}: {
+    data: AccordionData;
+    open?: string[] | string | null;
+    setOpen?:
+        | Dispatch<SetStateAction<string[]>>
+        | Dispatch<SetStateAction<string | null>>;
+    isMinimal?: boolean;
+    cardOnClick?: CardOnClick;
+    cardLabeler?: (pokemon: Pokemon) => ReactNode;
+    defaultValue?: string[] | string | null;
+    allowMultiple?: boolean;
+    sectionLabelTransformer?: (label: string) => ReactNode;
+}) => {
+    const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
+    const accordionItems = data.map(([label, pokemonData]) => (
+        <Accordion.Item key={label} value={label}>
+            <Accordion.Control>
+                {sectionLabelTransformer
+                    ? sectionLabelTransformer(label)
+                    : label}
+            </Accordion.Control>
+            <Accordion.Panel>
+                <Group justify="center" ta="center">
+                    {pokemonData.map((pokemon) => (
+                        <PokemonTooltip key={pokemon.data.id} pokemon={pokemon}>
+                            <PokemonDisplay
+                                pokemon={pokemon}
+                                onClick={cardOnClick}
+                            />
+                            <br />
+                            {cardLabeler && cardLabeler(pokemon)}
+                        </PokemonTooltip>
+                    ))}
+                </Group>
+            </Accordion.Panel>
+        </Accordion.Item>
+    ));
+
+    const variant = isMinimal ? "filled" : "separated";
+
+    return allowMultiple ?? true ? (
+        <Accordion
+            value={open as string[]}
+            multiple={true}
+            onChange={setOpen as Dispatch<SetStateAction<string[]>>}
+            defaultValue={defaultValue as string[]}
+            variant={variant}
+            w="100%"
+        >
+            {accordionItems}
+        </Accordion>
+    ) : (
+        <Accordion
+            value={open as string}
+            multiple={false}
+            onChange={setOpen as Dispatch<SetStateAction<string | null>>}
+            defaultValue={defaultValue as string | null}
+            variant={variant}
+            w="100%"
+        >
+            {accordionItems}
+        </Accordion>
     );
 };

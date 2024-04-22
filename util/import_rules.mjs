@@ -2,561 +2,618 @@ import { Dex } from "@pkmn/dex";
 
 const pokemonRawNamesByValue = {
     0: `
-        Arceus-Dragon
-        Arceus-Electric
-        Arceus-Fairy
-        Arceus-Fighting
-        Arceus-Fire
-        Arceus-Flying
-        Arceus-Ghost
-        Arceus-Grass
-        Arceus-Ground
-        Arceus-Ice
-        Arceus-Poison
-        Arceus-Psychic
-        Arceus-Rock
-        Arceus-Steel
-        Arceus-Water
-        Darkrai
-        Deoxys
-        Deoxys-Attack
-        Deoxys-Speed
-        Dialga
-        Floette-Eternal
-        Genesect
-        Giratina
-        Groudon
-        Ho-Oh
-        Kyogre
-        Kyurem-White
-        Landorus-Incarnate
-        Lugia
-        Lunala
-        Magearna
-        Marshadow
-        Mega Alakazam
-        Mega Blaziken
-        Mega Gengar
-        Mega Kangaskhan
-        Mega Latias
-        Mega Latios
-        Mega Lucario
-        Mega Metagross
-        Mega Mewtwo X
-        Mega Mewtwo Y
-        Mega Rayquaza
-        Mega Salamence
-        Mewtwo
-        Naganadel
-        Necrozma-Dawn-Wings
-        Necrozma-Dusk-Mane
-        Necrozma-Ultra
-        Palkia
-        Pheromosa
-        Pichu-Spiky-Eared
-        Pikachu-Alola
-        Pikachu-Belle
-        Pikachu-Cosplay
-        Pikachu-Hoenn
-        Pikachu-Kalos
-        Pikachu-Libre
-        Pikachu-Original
-        Pikachu-Partner
-        Pikachu-PhD
-        Pikachu-Pop-Star
-        Pikachu-Rock-Star
-        Pikachu-Sinnoh
-        Pikachu-Unova
-        Primal Groudon
-        Primal Kyogre
-        Rayquaza
-        Reshiram
-        Shaymin-Sky
-        Solgaleo
-        Xerneas
-        Yveltal
-        Zekrom
-        Zygarde-50%
-        Zygarde-Complete
+Arceus
+Arceus-Bug
+Arceus-Dark
+Arceus-Dragon
+Arceus-Electric
+Arceus-Fairy
+Arceus-Fighting
+Arceus-Fire
+Arceus-Flying
+Arceus-Ghost
+Arceus-Grass
+Arceus-Ground
+Arceus-Ice
+Arceus-Poison
+Arceus-Psychic
+Arceus-Rock
+Arceus-Steel
+Arceus-Water
+Calyrex-Ice
+Calyrex-Shadow
+Darkrai
+Deoxys
+Deoxys-Attack
+Dialga
+Dracovish
+Eternatus
+Galarian Darmanitan
+Genesect
+Giratina
+Giratina-Origin
+Groudon
+Ho-Oh
+Kyogre
+Kyurem-Black
+Kyurem-White
+Landorus-Incarnate
+Lickilicky
+Lugia
+Lunala
+Magearna
+Marshadow
+Mega Blaziken
+Mega Gengar
+Mega Latias
+Mega Latios
+Mega Lucario
+Mega Metagross
+Mega Mewtwo X
+Mega Mewtwo Y
+Mega Rayquaza
+Mega Salamence
+Melmetal
+Mewtwo
+Naganadel
+Necrozma-Dawn-Wings
+Necrozma-Dusk-Mane
+Necrozma-Ultra
+Palkia
+Pheromosa
+Primal Groudon
+Rayquaza
+Reshiram
+Shaymin-Sky
+Solgaleo
+Spectrier
+Xerneas
+Yveltal
+Zacian
+Zacian-Crowned
+Zamazenta
+Zamazenta-Crowned
+Zekrom
+Zygarde-50%
+Zygarde-Complete
+    `,
+    19: `
+Dragapult
+Mega Alakazam
+Unown
+Urshifu-Single-Strike
     `,
     18: `
-        Celesteela
-        Garchomp
-        Greninja-Ash
-        Kartana
-        Kyurem-Black
-        Landorus-Therian
-        Mega Mawile
-        Tapu Koko
-        Tapu Lele
+Aegislash
+Deoxys-Defense
+Deoxys-Speed
+Garchomp
+Kartana
+Kyurem
+Mega Diancie
+Mega Mawile
+Tapu Lele
     `,
     17: `
-        Greninja
-        Mega Diancie
-        Mega Lopunny
-        Tornadus-Therian
-        Toxapex
+Clefable
+Greninja
+Landorus-Therian
+Latios
+Mega Gallade
+Mega Kangaskhan
+Mega Scizor
+Tapu Koko
+Tornadus-Therian
+Victini
+Zeraora
     `,
     16: `
-        Blacephalon
-        Clefable
-        Deoxys-Defense
-        Heatran
-        Mega Charizard X
-        Mega Medicham
-        Mega Scizor
-        Tapu Fini
-        Thundurus-Incarnate
-        Weavile
+Blacephalon
+Celesteela
+Cinderace
+Mega Charizard X
+Mega Gardevoir
+Mega Lopunny
+Mega Medicham
+Rillaboom
+Tapu Fini
+Toxapex
+Urshifu-Rapid-Strike
+Volcarona
+Weavile
     `,
     15: `
-        Buzzwole
-        Excadrill
-        Gliscor
-        Infernape
-        Jirachi
-        Latios
-        Mega Gardevoir
-        Mega Sableye
-        Rotom-Wash
-        Victini
-        Zapdos
+Blaziken
+Buzzwole
+Dragonite
+Excadrill
+Ferrothorn
+Galarian Slowking
+Galarian Zapdos
+Gliscor
+Heatran
+Kommo-o
+Latias
+Regieleki
+Zapdos
     `,
     14: `
-        Ferrothorn
-        Gothitelle
-        Hawlucha
-        Hydreigon
-        Keldeo
-        Kommo-o
-        Kyurem
-        Latias
-        Manaphy
-        Mega Charizard Y
-        Mega Gallade
-        Mew
-        Necrozma
-        Terrakion
-        Thundurus-Therian
-        Tyranitar
-        Volcarona
-        Zeraora
+Alomomola
+Blissey
+Corviknight
+Gengar
+Gothitelle
+Hawlucha
+Hoopa-Unbound
+Hydreigon
+Keldeo
+Mega Aerodactyl
+Mega Charizard Y
+Mega Sableye
+Mega Venusaur
+Mew
+Mienshao
+Pelipper
+Rotom-Wash
+Scizor
+Thundurus-Incarnate
     `,
     13: `
-        Azumarill
-        Dragonite
-        Gengar
-        Hoopa-Unbound
-        Mamoswine
-        Mega Aerodactyl
-        Mega Swampert
-        Nidoking
-        Nidoqueen
-        Nihilego
-        Reuniclus
-        Salamence
-        Scizor
-        Serperior
-        Skarmory
+Amoonguss
+Azumarill
+Chansey
+Conkeldurr
+Jirachi
+Mamoswine
+Manaphy
+Mega Altaria
+Mega Blastoise
+Mega Gyarados
+Mega Heracross
+Mega Swampert
+Mega Tyranitar
+Necrozma
+Nihilego
+Reuniclus
+Salamence
+Serperior
+Skarmory
+Slowbro
+Slowking
+Tapu Bulu
+Terrakion
+Thundurus-Therian
+Tyranitar
+Xurkitree
     `,
     12: `
-        Alolan Muk
-        Blissey
-        Chansey
-        Diggersby
-        Dugtrio
-        Krookodile
-        Mega Gyarados
-        Mega Manectric
-        Mega Pidgeot
-        Mega Pinsir
-        Mega Slowbro
-        Mega Tyranitar
-        Metagross
-        Mienshao
-        Milotic
-        Raikou
-        Scolipede
-        Slowbro
-        Snorlax
-        Starmie
-        Suicune
-        Tangrowth
-        Tapu Bulu
+Alakazam
+Alolan Ninetales
+Azelf
+Cresselia
+Galarian Moltres
+Gyarados
+Haxorus
+Infernape
+Lycanroc-Dusk
+Mandibuzz
+Mega Aggron
+Mega Garchomp
+Mega Pinsir
+Mega Sharpedo
+Milotic
+Moltres
+Nidoking
+Nidoqueen
+Obstagoon
+Primarina
+Raikou
+Scolipede
+Silvally
+Starmie
+Sylveon
+Tangrowth
+Togekiss
+Volcanion
     `,
     11: `
-        Alakazam
-        Azelf
-        Celebi
-        Cobalion
-        Conkeldurr
-        Cresselia
-        Crobat
-        Hippowdon
-        Klefki
-        Lycanroc-Dusk
-        Magnezone
-        Mandibuzz
-        Mega Altaria
-        Mega Beedrill
-        Mega Garchomp
-        Mega Venusaur
-        Pelipper
-        Primarina
-        Roserade
-        Silvally
-        Slowking
-        Sylveon
-        Togekiss
-        Uxie
-        Volcanion
-        Xurkitree
+Alolan Muk
+Arcanine
+Diggersby
+Dracozolt
+Dugtrio
+Entei
+Hatterene
+Hippowdon
+Inteleon
+Kingdra
+Klefki
+Mega Beedrill
+Metagross
+Ribombee
+Rotom-Heat
+Seismitoad
+Snorlax
+Staraptor
+Suicune
+Vaporeon
+Zarude
     `,
     10: `
-        Alolan Ninetales
-        Alomomola
-        Amoonguss
-        Bronzong
-        Darmanitan
-        Decidueye
-        Empoleon
-        Florges
-        Gardevoir
-        Gyarados
-        Haxorus
-        Heliolisk
-        Kingdra
-        Mega Aggron
-        Mega Blastoise
-        Mega Heracross
-        Mega Sharpedo
-        Porygon2
-        Registeel
-        Rotom-Heat
-        Salazzle
-        Seismitoad
-        Shaymin
-        Swampert
+Barraskewda
+Bisharp
+Breloom
+Cobalion
+Crawdaunt
+Crobat
+Darmanitan
+Decidueye
+Donphan
+Empoleon
+Galarian Weezing
+Gardevoir
+Grimmsnarl
+Heliolisk
+Heracross
+Incineroar
+Krookodile
+Lucario
+Mega Pidgeot
+Mega Slowbro
+Meloetta
+Noivern
+Porygon-Z
+Porygon2
+Roserade
+Rotom-Mow
+Salazzle
+Shaymin
+Talonflame
+Torkoal
+Tornadus-Incarnate
+Toxtricity
+Uxie
     `,
     9: `
-        Aerodactyl
-        Arcanine
-        Breloom
-        Chandelure
-        Comfey
-        Crawdaunt
-        Donphan
-        Drapion
-        Entei
-        Meloetta
-        Mesprit
-        Mimikyu
-        Porygon-Z
-        Quagsire
-        Tornadus-Incarnate
-        Tsareena
-        Vaporeon
-        Zoroark
+Aerodactyl
+Blastoise
+Bronzong
+Chandelure
+Chesnaught
+Drapion
+Florges
+Galarian Slowbro
+Gigalith
+Gligar
+Goodra
+Jellicent
+Magnezone
+Mega Houndoom
+Mesprit
+Mimikyu
+Quagsire
+Regidrago
+Registeel
+Swampert
+Swellow
+Tsareena
+Umbreon
+Zygarde-10%
     `,
     8: `
-        Alolan Persian
-        Bisharp
-        Blastoise
-        Blaziken
-        Cloyster
-        Cofagrigus
-        Dhelmise
-        Dragalge
-        Druddigon
-        Eelektross
-        Feraligatr
-        Gigalith
-        Goodra
-        Heracross
-        Incineroar
-        Jellicent
-        Jolteon
-        Lucario
-        Miltank
-        Noivern
-        Pangoro
-        Piloswine
-        Politoed
-        Ribombee
-        Rotom-Mow
-        Staraptor
-        Swellow
-        Talonflame
-        Tentacruel
-        Tyrantrum
-        Umbreon
-        Whimsicott
-        Zygarde-10%
+Araquanid
+Celebi
+Cloyster
+Cofagrigus
+Copperajah
+Dhelmise
+Diancie
+Dragalge
+Durant
+Emboar
+Feraligatr
+Galvantula
+Indeedee
+Lycanroc-Midday
+Mega Absol
+Miltank
+Pangoro
+Piloswine
+Politoed
+Polteageist
+Rhyperior
+Stakataka
+Stunfisk
+Tentacruel
+Tyrantrum
+Venusaur
+Vikavolt
+Whimsicott
+Zoroark
     `,
     7: `
-        Araquanid
-        Bewear
-        Chesnaught
-        Diancie
-        Emboar
-        Escavalier
-        Flygon
-        Galvantula
-        Gastrodon
-        Gligar
-        Hariyama
-        Linoone
-        Magneton
-        Mismagius
-        Moltres
-        Qwilfish
-        Rhyperior
-        Sharpedo
-        Sigilyph
-        Slurpuff
-        Sneasel
-        Stakataka
-        Torkoal
-        Toxicroak
-        Venomoth
-        Venusaur
-        Virizion
+Accelgor
+Alolan Marowak
+Alolan Persian
+Alolan Raichu
+Arctozolt
+Comfey
+Druddigon
+Eelektross
+Escavalier
+Espeon
+Flygon
+Galarian Articuno
+Gastrodon
+Glastrier
+Hariyama
+Hitmonlee
+Hoopa
+Mantine
+Mega Sceptile
+Mega Steelix
+Mudsdale
+Qwilfish
+Scrafty
+Sharpedo
+Sigilyph
+Sirfetch'd
+Slurpuff
+Sneasel
+Steelix
+Toxicroak
+Venomoth
+Virizion
+Yanmega
     `,
     6: `
-        Accelgor
-        Alolan Marowak
-        Alolan Raichu
-        Braviary
-        Doublade
-        Espeon
-        Exploud
-        Froslass
-        Golisopod
-        Gothorita
-        Gourgeist
-        Granbull
-        Hitmonlee
-        Kabutops
-        Lanturn
-        Lycanroc-Midday
-        Machamp
-        Medicham
-        Mega Absol
-        Mega Houndoom
-        Mega Sceptile
-        Mega Steelix
-        Mudsdale
-        Passimian
-        Scrafty
-        Skuntank
-        Steelix
-        Stunfisk
-        Vikavolt
-        Weezing
-        Wobbuffet
-        Yanmega
+Alcremie
+Archeops
+Aromatisse
+Articuno
+Audino
+Bewear
+Braviary
+Centiskorch
+Charizard
+Delphox
+Ditto
+Doublade
+Forretress
+Froslass
+Golisopod
+Gourgeist
+Granbull
+Hitmontop
+Kabutops
+Lanturn
+Ludicolo
+Machamp
+Magneton
+Medicham
+Mega Audino
+Mega Glalie
+Mega Manectric
+Mismagius
+Ninetales
+Omastar
+Palossand
+Passimian
+Rotom-Frost
+Runerigus
+Sandaconda
+Vanilluxe
+Weezing
     `,
     5: `
-        Ambipom
-        Archeops
-        Aromatisse
-        Audino
-        Barbaracle
-        Delphox
-        Ditto
-        Drampa
-        Durant
-        Electabuzz
-        Forretress
-        Golbat
-        Golurk
-        Hitmontop
-        Honchkrow
-        Hoopa
-        Kangaskhan
-        Lickilicky
-        Ludicolo
-        Mantine
-        Mega Camerupt
-        Mega Glalie
-        Minior
-        Musharna
-        Ninetales
-        Omastar
-        Sableye
-        Spiritomb
-        Tangela
-        Tauros
-        Type: Null
-        Vileplume
-        Xatu
+Ambipom
+Appletun
+Boltund
+Bruxish
+Cinccino
+Claydol
+Clefairy
+Crustle
+Cryogonal
+Drampa
+Duraludon
+Electivire
+Exploud
+Flapple
+Gallade
+Garbodor
+Golbat
+Golurk
+Gothorita
+Linoone
+Mega Abomasnow
+Mega Ampharos
+Mega Camerupt
+Minior
+Musharna
+Orbeetle
+Regirock
+Rhydon
+Rotom
+Rotom-Fan
+Scyther
+Tangela
+Tauros
+Victreebel
+Vileplume
+Xatu
     `,
     4: `
-        Alolan Sandslash
-        Bruxish
-        Carracosta
-        Cinccino
-        Clefairy
-        Cryogonal
-        Dodrio
-        Electivire
-        Gallade
-        Garbodor
-        Gurdurr
-        Guzzlord
-        Hitmonchan
-        Houndoom
-        Kecleon
-        Lurantis
-        Magmortar
-        Mega Ampharos
-        Mega Audino
-        Oricorio
-        Palossand
-        Poliwrath
-        Primeape
-        Raichu
-        Rapidash
-        Regirock
-        Rhydon
-        Roselia
-        Rotom-Fan
-        Rotom-Frost
-        Sawk
-        Stoutland
-        Throh
-        Togedemaru
-        Turtonator
-        Vanilluxe
-        Victreebel
-        Wishiwashi
+Abomasnow
+Avalugg
+Barbaracle
+Coalossal
+Cursola
+Drednaw
+Drifblim
+Dusclops
+Dusknoir
+Frosmoth
+Galarian Corsola
+Galarian Rapidash
+Gurdurr
+Guzzlord
+Hitmonchan
+Honchkrow
+Houndoom
+Jolteon
+Kangaskhan
+Luxray
+Magmortar
+Morpeko
+Oricorio
+Poliwrath
+Primeape
+Pyroar
+Raichu
+Rapidash
+Regigigas
+Roselia
+Sableye
+Sandslash
+Sawk
+Sceptile
+Skuntank
+Spiritomb
+Swoobat
+Throh
+Togetic
+Type: Null
+Ursaring
+Zangoose
     `,
     3: `
-        Abomasnow
-        Absol
-        Aggron
-        Alolan Dugtrio
-        Alolan Exeggutor
-        Alolan Golem
-        Ampharos
-        Armaldo
-        Articuno
-        Basculin
-        Beartic
-        Bouffalant
-        Charizard
-        Clawitzer
-        Claydol
-        Crustle
-        Dusclops
-        Dusknoir
-        Ferroseed
-        Floatzel
-        Frogadier
-        Gorebyss
-        Haunter
-        Komala
-        Leafeon
-        Liepard
-        Luxray
-        Lycanroc-Midnight
-        Manectric
-        Mawile
-        Muk
-        Munchlax
-        Ninjask
-        Pyroar
-        Pyukumuku
-        Sandslash
-        Sceptile
-        Scyther
-        Shiftry
-        Shuckle
-        Smeargle
-        Togetic
-        Torterra
-        Trevenant
-        Typhlosion
-        Ursaring
-        Vullaby
-        Zangoose
+Aggron
+Alolan Exeggutor
+Alolan Golem
+Arctovish
+Aurorus
+Bouffalant
+Carracosta
+Clawitzer
+Crabominable
+Cramorant
+Dubwool
+Eldegoss
+Electabuzz
+Ferroseed
+Flareon
+Floatzel
+Galarian Stunfisk
+Gogoat
+Gorebyss
+Haunter
+Huntail
+Jynx
+Kecleon
+Kingler
+Klinklang
+Komala
+Lapras
+Leafeon
+Liepard
+Lurantis
+Lycanroc-Midnight
+Malamar
+Manectric
+Munchlax
+Perrserker
+Pincurchin
+Pyukumuku
+Quilladin
+Regice
+Samurott
+Shiftry
+Shuckle
+Smeargle
+Stoutland
+Thwackey
+Togedemaru
+Torterra
+Trevenant
+Turtonator
+Typhlosion
+Vivillon
+Vullaby
+Wigglytuff
+Wishiwashi
     `,
     2: `
-        Alolan Raticate
-        Altaria
-        Arbok
-        Ariados
-        Aurorus
-        Avalugg
-        Beheeyem
-        Bellossom
-        Bibarel
-        Camerupt
-        Chatot
-        Combusken
-        Crabominable
-        Cradily
-        Drifblim
-        Duosion
-        Electrode
-        Exeggutor
-        Flareon
-        Fraxure
-        Gogoat
-        Golem
-        Grotle
-        Grumpig
-        Huntail
-        Illumise
-        Jumpluff
-        Jynx
-        Kadabra
-        Kingler
-        Klinklang
-        Kricketune
-        Lapras
-        Leavanny
-        Lilligant
-        Machoke
-        Malamar
-        Marowak
-        Masquerain
-        Mega Abomasnow
-        Meganium
-        Meowstic
-        Metang
-        Misdreavus
-        Mr. Mime
-        Murkrow
-        Noctowl
-        Oranguru
-        Pinsir
-        Probopass
-        Purugly
-        Rampardos
-        Raticate
-        Regice
-        Relicanth
-        Rotom
-        Samurott
-        Sawsbuck
-        Servine
-        Shiinotic
-        Simipour
-        Simisage
-        Simisear
-        Slaking
-        Solrock
-        Sudowoodo
-        Swanna
-        Swoobat
-        Torracat
-        Toucannon
-        Vigoroth
-        Vivillon
-        Volbeat
-        Whirlipede
-        Zebstrika
+Absol
+Alolan Dugtrio
+Alolan Raticate
+Alolan Sandslash
+Altaria
+Ampharos
+Armaldo
+Basculin
+Beartic
+Beheeyem
+Bibarel
+Calyrex
+Camerupt
+Carbink
+Chatot
+Chimecho
+Cradily
+Diglett
+Dodrio
+Duosion
+Eiscue
+Electrode
+Exeggutor
+Falinks
+Fraxure
+Frogadier
+Galarian Mr. Mime
+Glaceon
+Golduck
+Grapploct
+Grotle
+Hippopotas
+Kadabra
+Leavanny
+Lickitung
+Lilligant
+Machoke
+Magmar
+Masquerain
+Mawile
+Meganium
+Meowstic
+Metang
+Misdreavus
+Monferno
+Mr. Mime
+Mr. Rime
+Muk
+Murkrow
+Oranguru
+Pinsir
+Probopass
+Raboot
+Rampardos
+Sawsbuck
+Shelgon
+Shiinotic
+Simipour
+Simisage
+Simisear
+Stonjourner
+Swanna
+Thievul
+Trapinch
+Unfezant
+Volbeat
+Walrein
+Wartortle
+Wobbuffet
+Zebstrika
     `,
 };
 
@@ -576,7 +633,7 @@ const pokemonIDsByValue = Object.entries(pokemonNamesByValue).reduce(
         acc[value] = names
             .map((name) => Dex.species.get(name))
             .filter((p) => {
-                if (!p.exists) console.log("non existant", p);
+                if (!p.exists) console.error("non existant", p);
                 return p.exists;
             })
             .map((p) => p.id);
@@ -613,7 +670,7 @@ const supabaseKey = env.VITE_SUPABASE_KEY_ADMIN;
 const supabase = createClient(supabaseUrl, supabaseKey);
 for (const [value, pokemonIDs] of Object.entries(pokemonIDsByValue)) {
     const toInsert = pokemonIDs.map((id) => ({
-        point_ruleset: "86fb92a1-eb1b-478d-9144-ad4ab61a76e8",
+        point_ruleset: "b000cc12-92ba-4840-b9bf-900d47f1d035",
         value: value,
         pokemon_id: id,
     }));
@@ -624,5 +681,5 @@ for (const [value, pokemonIDs] of Object.entries(pokemonIDsByValue)) {
             onConflict: "point_ruleset,pokemon_id",
         })
         .select();
-    if (error) console.log(error);
+    if (error) console.error(error);
 }

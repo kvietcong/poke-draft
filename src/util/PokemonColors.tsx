@@ -20,6 +20,6 @@ export const colorByType: { [id: string]: string } = {
 };
 
 export const getTypeColor = (type: string) =>
-    colorByType[type.toLowerCase()] || "#777";
+    colorByType[type.toLowerCase()] ?? "#777";
 
 export default getTypeColor;
