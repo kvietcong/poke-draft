@@ -285,8 +285,8 @@ export const PokemonAccordion = ({
     data: AccordionData;
     open?: string[] | string | null;
     setOpen?:
-    | Dispatch<SetStateAction<string[]>>
-    | Dispatch<SetStateAction<string | null>>;
+        | Dispatch<SetStateAction<string[]>>
+        | Dispatch<SetStateAction<string | null>>;
     isMinimal?: boolean;
     cardOnClick?: CardOnClick;
     cardLabeler?: (pokemon: Pokemon) => ReactNode;
@@ -313,12 +313,13 @@ export const PokemonAccordion = ({
                                     key={pokemon.data.id}
                                     pokemon={pokemon}
                                 >
-                                    <PokemonDisplay
-                                        pokemon={pokemon}
-                                        onClick={cardOnClick}
-                                    />
-                                    <br />
-                                    {cardLabeler && cardLabeler(pokemon)}
+                                    <Stack gap="xs">
+                                        <PokemonDisplay
+                                            pokemon={pokemon}
+                                            onClick={cardOnClick}
+                                        />
+                                        {cardLabeler && cardLabeler(pokemon)}
+                                    </Stack>
                                 </PokemonTooltip>
                             ))}
                     </Group>

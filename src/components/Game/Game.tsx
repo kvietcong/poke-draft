@@ -4,7 +4,7 @@ import supabase from "@/supabase";
 import {
     Button,
     Center,
-    Drawer,
+    Modal,
     Grid,
     Stack,
     Text,
@@ -166,7 +166,13 @@ const Game = () => {
     };
 
     useEffect(() => {
-        if (playerInfoByID) setOpen(Object.keys(playerInfoByID));
+        if (playerInfoByID)
+            setOpen(
+                Object.keys(playerInfoByID).filter(
+                    (id) =>
+                        Object.keys(playerInfoByID[id].selections).length > 0
+                )
+            );
     }, [playerInfoByID]);
 
     if (
@@ -326,32 +332,32 @@ const Game = () => {
         return true;
     };
 
-    const RulesetDrawer = (
-        <Drawer
+    const RulesetModal = (
+        <Modal
             opened={isRulesetOpened}
             onClose={hideRuleset}
             title="Point Ruleset"
             radius="md"
-            size="75%"
+            size="85%"
             keepMounted={true}
-            position="right"
+            centered
         >
             <RulesetView
                 cardOnClick={rulesetCardOnClick}
                 extraRulePredicates={[alreadyChosenPokemon]}
             />
-        </Drawer>
+        </Modal>
     );
 
-    const TradingDrawer = (
-        <Drawer
+    const TradingModal = (
+        <Modal
             opened={isTradingOpened}
             onClose={hideTrading}
             title="Trading"
             radius="md"
-            size="75%"
+            size="85%"
             keepMounted={true}
-            position="left"
+            centered
         >
             <Stack>
                 <Title>Game Trades</Title>
@@ -363,7 +369,7 @@ const Game = () => {
                     </>
                 )}
             </Stack>
-        </Drawer>
+        </Modal>
     );
 
     const GameTitle = (
@@ -404,7 +410,11 @@ const Game = () => {
 
     const accordionData = useMemo(() => {
         const data = Object.entries(playerInfoByID)
-            .sort((a, b) => b[1].priority - a[1].priority)
+            .sort(
+                (a, b) =>
+                    b[1].priority - a[1].priority ||
+                    a[1].id.localeCompare(b[1].id)
+            )
             .map(([playerID, playerInfo]) => {
                 const sectionInfo = [
                     playerID,
@@ -444,24 +454,24 @@ const Game = () => {
 
     return (
         <>
-            {RulesetDrawer}
-            {TradingDrawer}
+            {RulesetModal}
+            {TradingModal}
             {GameTitle}
             <Button
-                left="0"
-                top="50%"
-                style={{ transform: "translate(-40%) rotate(90deg)" }}
+                left="1rem"
+                bottom="1rem"
                 pos="fixed"
                 onClick={showRuleset}
+                style={{ zIndex: 1 }}
             >
                 See Point Ruleset
             </Button>
             <Button
-                right="0"
-                top="50%"
-                style={{ transform: "translate(32%) rotate(-90deg)" }}
+                right="1rem"
+                bottom="1rem"
                 pos="fixed"
                 onClick={showTrading}
+                style={{ zIndex: 1 }}
             >
                 Trade
             </Button>

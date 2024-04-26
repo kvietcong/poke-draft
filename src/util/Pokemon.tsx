@@ -44,5 +44,7 @@ export const fetchMovesByPokemon = async (dex: ModdedDex) => {
 
 export const smogonOnClick = (pokemon: Pokemon, generation?: number) =>
     window.open(
-        encodeURI(`https://www.smogon.com/dex/${getGenerationName(generation)}/pokemon/${pokemon.data.name}/`)
+        encodeURI(
+            `https://www.smogon.com/dex/${getGenerationName(generation)}/pokemon/${pokemon.data.name}/`
+        )
     );
