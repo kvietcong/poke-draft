@@ -168,6 +168,7 @@ export const PokemonCard = ({
                 radius={15}
                 onClick={(e) => onCardClick(pokemon, e)}
                 className={[appClasses.pointer, classes.glow].join(" ")}
+                loading="lazy"
             />
             <Tooltip label="Click to copy ID" position="bottom">
                 <Text
@@ -284,8 +285,8 @@ export const PokemonAccordion = ({
     data: AccordionData;
     open?: string[] | string | null;
     setOpen?:
-        | Dispatch<SetStateAction<string[]>>
-        | Dispatch<SetStateAction<string | null>>;
+    | Dispatch<SetStateAction<string[]>>
+    | Dispatch<SetStateAction<string | null>>;
     isMinimal?: boolean;
     cardOnClick?: CardOnClick;
     cardLabeler?: (pokemon: Pokemon) => ReactNode;
@@ -294,29 +295,37 @@ export const PokemonAccordion = ({
     sectionLabelTransformer?: (label: string) => ReactNode;
 }) => {
     const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
-    const accordionItems = data.map(([label, pokemonData]) => (
-        <Accordion.Item key={label} value={label}>
-            <Accordion.Control>
-                {sectionLabelTransformer
-                    ? sectionLabelTransformer(label)
-                    : label}
-            </Accordion.Control>
-            <Accordion.Panel>
-                <Group justify="center" ta="center">
-                    {pokemonData.map((pokemon) => (
-                        <PokemonTooltip key={pokemon.data.id} pokemon={pokemon}>
-                            <PokemonDisplay
-                                pokemon={pokemon}
-                                onClick={cardOnClick}
-                            />
-                            <br />
-                            {cardLabeler && cardLabeler(pokemon)}
-                        </PokemonTooltip>
-                    ))}
-                </Group>
-            </Accordion.Panel>
-        </Accordion.Item>
-    ));
+    const accordionItems = data.map(([label, pokemonData]) => {
+        return (
+            <Accordion.Item key={label} value={label}>
+                <Accordion.Control>
+                    {sectionLabelTransformer
+                        ? sectionLabelTransformer(label)
+                        : label}
+                </Accordion.Control>
+                <Accordion.Panel>
+                    <Group justify="center" ta="center">
+                        {(!(open || setOpen) ||
+                            open === label ||
+                            open?.includes(label)) &&
+                            pokemonData.map((pokemon) => (
+                                <PokemonTooltip
+                                    key={pokemon.data.id}
+                                    pokemon={pokemon}
+                                >
+                                    <PokemonDisplay
+                                        pokemon={pokemon}
+                                        onClick={cardOnClick}
+                                    />
+                                    <br />
+                                    {cardLabeler && cardLabeler(pokemon)}
+                                </PokemonTooltip>
+                            ))}
+                    </Group>
+                </Accordion.Panel>
+            </Accordion.Item>
+        );
+    });
 
     const variant = isMinimal ? "filled" : "separated";
 
