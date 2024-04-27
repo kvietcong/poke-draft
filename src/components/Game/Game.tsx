@@ -35,6 +35,8 @@ import {
     fetchGameTrades,
     tradeConfirmationTable,
     tradeTable,
+    fetchCurrentDrafter,
+    gameTable,
 } from "@/util/database";
 import { GameTradesAccordion, TradeCreator } from "./Trade";
 import {
@@ -133,7 +135,7 @@ const PokemonSelector = ({
 
 const Game = () => {
     const { session, prefersMinimal } = useContext(AppContext);
-    const { gameInfo } = useContext(GameInfoContext);
+    const { gameInfo, currentDrafter } = useContext(GameInfoContext);
     const { playerInfoByID, allPlayerInfo } = useContext(GamePlayersContext);
     const { dex, pointRulesetInfo, valueByPokemonID } =
         useContext(PointRulesetContext);
@@ -185,54 +187,8 @@ const Game = () => {
     )
         return <Loading />;
 
-    const getCurrentTurnPlayerID = () => {
-        const ids = Object.keys(playerInfoByID);
-        if (ids.length < 2) return;
-        const totalByID = Object.values(playerInfoByID).reduce<{
-            [id: string]: number;
-        }>((acc, next) => {
-            acc[next.id] = getPointTotal(
-                Object.values(next.selections),
-                valueByPokemonID
-            );
-            return acc;
-        }, {});
-
-        const filteredForLimits = ids.filter((id) => {
-            const rulesetForPlayer = playerInfoByID[id].rules;
-            const hasPoints = totalByID[id] < rulesetForPlayer.maxPoints;
-            const enoughRoom =
-                (pokemonByPlayerID[id]?.length ?? 0) <
-                rulesetForPlayer.maxTeamSize;
-            return hasPoints && enoughRoom;
-        });
-
-        const lowestCount = Math.min(
-            ...filteredForLimits.map((id) => pokemonByPlayerID[id]?.length ?? 0)
-        );
-        const filteredForRound = filteredForLimits.filter((id) => {
-            const hasNotPickedThisRound =
-                (pokemonByPlayerID[id]?.length ?? 0) == lowestCount;
-            return hasNotPickedThisRound;
-        });
-
-        filteredForRound.sort(
-            (a, b) =>
-                (playerInfoByID[b].priority ?? 0) -
-                (playerInfoByID[a].priority ?? 0)
-        );
-        if (lowestCount % 2 == 1) filteredForRound.reverse();
-
-        return filteredForRound?.[0];
-    };
-    const currentTurnPlayerID = getCurrentTurnPlayerID();
     const doesGameHavePlayers = Object.keys(playerInfoByID).length > 1;
-    const isDraftingFinished = !currentTurnPlayerID && doesGameHavePlayers;
-
-    const getIsMyTurn = (): boolean => {
-        if (!session) return false;
-        return currentTurnPlayerID === session.user.id;
-    };
+    const isDraftingFinished = !currentDrafter && doesGameHavePlayers;
 
     const getIsJoinable = () => {
         const counts = Object.keys(playerInfoByID).map(
@@ -263,61 +219,47 @@ const Game = () => {
         });
     };
 
-    const selectPokemon = getIsMyTurn()
+    const selectPokemon = session && session.user.id === currentDrafter
         ? async (pokemon: Pokemon) => {
-              if (!session)
-                  return notifications.show({
-                      color: "red",
-                      title: "Not Logged In",
-                      message: "You need to be logged in! How did you do this?",
-                  });
-              if (!(session.user.id in playerInfoByID))
-                  return notifications.show({
-                      color: "red",
-                      title: "Not in the Game",
-                      message:
-                          "You need to be in the game! How did you do this?",
-                  });
+            const value = valueByPokemonID[pokemon.data.id];
+            if (value === 0)
+                return notifications.show({
+                    color: "red",
+                    title: "Banned Pokemon",
+                    message: `${pokemon.data.name} is a banned Pokemon!`,
+                });
 
-              const value = valueByPokemonID[pokemon.data.id];
-              if (value === 0)
-                  return notifications.show({
-                      color: "red",
-                      title: "Banned Pokemon",
-                      message: `${pokemon.data.name} is a banned Pokemon!`,
-                  });
+            const currentPointTotal = getPointTotal(
+                Object.values(playerInfoByID[session.user.id].selections),
+                valueByPokemonID
+            );
 
-              const currentPointTotal = getPointTotal(
-                  Object.values(playerInfoByID[session.user.id].selections),
-                  valueByPokemonID
-              );
+            const rulesetForPlayer = playerInfoByID[session.user.id].rules;
+            if (currentPointTotal + value > rulesetForPlayer.maxPoints)
+                return notifications.show({
+                    color: "red",
+                    title: "You don't have enough points",
+                    message: `${pokemon.data.name} is worth too many points!`,
+                });
 
-              const rulesetForPlayer = playerInfoByID[session.user.id].rules;
-              if (currentPointTotal + value > rulesetForPlayer.maxPoints)
-                  return notifications.show({
-                      color: "red",
-                      title: "You don't have enough points",
-                      message: `${pokemon.data.name} is worth too many points!`,
-                  });
-
-              const { error } = await supabase.from(gameSelectionTable).insert([
-                  {
-                      game: gameInfo.id,
-                      pokemon_id: pokemon.data.id,
-                      player: session.user.id,
-                  },
-              ]);
-              if (error)
-                  return notifications.show({
-                      color: "red",
-                      title: "Couldn't Select Pokemon",
-                      message: `${error.message}`,
-                  });
-              notifications.show({
-                  title: "Added your selection",
-                  message: `You have added ${pokemon.data.name} to your team`,
-              });
-          }
+            const { error } = await supabase.from(gameSelectionTable).insert([
+                {
+                    game: gameInfo.id,
+                    pokemon_id: pokemon.data.id,
+                    player: session.user.id,
+                },
+            ]);
+            if (error)
+                return notifications.show({
+                    color: "red",
+                    title: "Couldn't Select Pokemon",
+                    message: `${error.message}`,
+                });
+            notifications.show({
+                title: "Added your selection",
+                message: `You have added ${pokemon.data.name} to your team`,
+            });
+        }
         : undefined;
 
     const alreadyChosenPokemon = (pokemon: Pokemon): boolean => {
@@ -388,11 +330,11 @@ const Game = () => {
 
     const DraftStateTitle = (
         <Title order={2}>
-            {currentTurnPlayerID
-                ? `${playerInfoByID[currentTurnPlayerID].name}'s Turn To Pick`
+            {currentDrafter
+                ? `${playerInfoByID[currentDrafter].name}'s Turn To Pick`
                 : isDraftingFinished
-                  ? "Drafting is Complete"
-                  : "Game hasn't started"}
+                    ? "Drafting is Complete"
+                    : "Game hasn't started"}
         </Title>
     );
 
@@ -523,7 +465,8 @@ export const _GamePage = () => {
     const { id } = useParams();
     if (!id) return <>No ID provided</>;
 
-    const { gameInfo, setGameInfo } = useContext(GameInfoContext);
+    const { gameInfo, setGameInfo, setCurrentDrafter } =
+        useContext(GameInfoContext);
     const { gameTrades, setGameTrades } = useContext(GameTradesContext);
     const { playerInfoByID, allPlayerInfo, setAllPlayerInfo } =
         useContext(GamePlayersContext);
@@ -557,12 +500,41 @@ export const _GamePage = () => {
         setGameTrades(gameTrades);
     };
 
+    const refreshCurrentDrafter = async () => {
+        const currentDrafter = await fetchCurrentDrafter(supabase, id);
+        setCurrentDrafter(currentDrafter);
+    };
+
+    useEffect;
+
     useEffect(() => {
         refreshGameInfo();
         refreshGameTrades();
         refreshAllPlayerInfo();
+        refreshCurrentDrafter();
         refreshPointRulesetInfo();
 
+        const update = supabase
+            .channel("game-update")
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: gameTable,
+                    filter: `id=eq.${id}`,
+                },
+                (payload) => {
+                    console.log("Change received for game!", payload);
+                    refreshGameInfo();
+                    refreshCurrentDrafter();
+                    notifications.show({
+                        title: "Update",
+                        message: "A game update was triggered",
+                    });
+                }
+            )
+            .subscribe();
         const select = supabase
             .channel("game-selections")
             .on(
@@ -576,6 +548,7 @@ export const _GamePage = () => {
                 (payload) => {
                     console.log("Change received for selections!", payload);
                     refreshAllPlayerInfo();
+                    refreshCurrentDrafter();
                     notifications.show({
                         title: "Update",
                         message: "A team update was triggered",
@@ -605,6 +578,7 @@ export const _GamePage = () => {
             .subscribe();
         return () => {
             supabase.removeChannel(select);
+            supabase.removeChannel(update);
             supabase.removeChannel(join);
         };
     }, [id]);

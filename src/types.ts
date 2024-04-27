@@ -31,6 +31,7 @@ export type GameInfo = {
     name: string;
     owner: string;
     createdAt: string;
+    gameStage: number;
     pointRuleset: string;
 };
 

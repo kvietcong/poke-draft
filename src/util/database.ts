@@ -22,7 +22,7 @@ export const fetchGameInfo = async (supabase: SupabaseClient, game: string) => {
     let { data, error } = await supabase
         .from(gameTable)
         .select(
-            `id, name, owner, pointRuleset:point_ruleset, createdAt:created_at`
+            `id, name, owner, pointRuleset:point_ruleset, createdAt:created_at, gameStage:game_stage`
         )
         .eq("id", game)
         .single();
@@ -30,6 +30,15 @@ export const fetchGameInfo = async (supabase: SupabaseClient, game: string) => {
     if (!data) return console.log("No data received!") as undefined;
     return data as GameInfo;
 };
+
+export const fetchCurrentDrafter = async (supabase: SupabaseClient, game: string) => {
+    const { data, error } = await supabase.rpc("get_current_drafter", {
+        game_id: game,
+    });
+    if (error) return console.error(error) as undefined;
+    if (!data) return console.log("No data received!") as undefined;
+    return data as string;
+}
 
 export const fetchAllPlayerInfo = async (
     supabase: SupabaseClient,
