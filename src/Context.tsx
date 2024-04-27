@@ -112,15 +112,19 @@ export const GameTradesProvider = ({ children }: { children: ReactNode }) => {
 export type GameInfoContext = {
     gameInfo?: GameInfo;
     setGameInfo: React.Dispatch<React.SetStateAction<GameInfo | undefined>>;
+    currentDrafter?: string;
+    setCurrentDrafter: React.Dispatch<React.SetStateAction<string | undefined>>;
 };
 export const GameInfoContext = createContext<GameInfoContext>({
     setGameInfo: () => {},
+    setCurrentDrafter: () => {},
 });
 export const GameInfoProvider = ({ children }: { children: ReactNode }) => {
     const [gameInfo, setGameInfo] = useState<GameInfo>();
+    const [currentDrafter, setCurrentDrafter] = useState<string>();
 
     return (
-        <GameInfoContext.Provider value={{ gameInfo, setGameInfo }}>
+        <GameInfoContext.Provider value={{ gameInfo, setGameInfo, currentDrafter, setCurrentDrafter }}>
             {children}
         </GameInfoContext.Provider>
     );
