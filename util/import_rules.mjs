@@ -37,12 +37,12 @@ Ho-Oh
 Kyogre
 Kyurem-Black
 Kyurem-White
-Landorus-Incarnate
 Lickilicky
 Lugia
 Lunala
 Magearna
 Marshadow
+Mega Alakazam
 Mega Blaziken
 Mega Gengar
 Mega Latias
@@ -53,7 +53,6 @@ Mega Mewtwo X
 Mega Mewtwo Y
 Mega Rayquaza
 Mega Salamence
-Melmetal
 Mewtwo
 Naganadel
 Necrozma-Dawn-Wings
@@ -78,13 +77,14 @@ Zygarde-50%
 Zygarde-Complete
     `,
     19: `
+Aegislash
 Dragapult
-Mega Alakazam
+Landorus-Incarnate
+Melmetal
 Unown
 Urshifu-Single-Strike
     `,
     18: `
-Aegislash
 Deoxys-Defense
 Deoxys-Speed
 Garchomp
@@ -92,7 +92,6 @@ Kartana
 Kyurem
 Mega Diancie
 Mega Mawile
-Tapu Lele
     `,
     17: `
 Clefable
@@ -103,12 +102,15 @@ Mega Gallade
 Mega Kangaskhan
 Mega Scizor
 Tapu Koko
+Tapu Lele
 Tornadus-Therian
+Urshifu-Rapid-Strike
 Victini
 Zeraora
     `,
     16: `
 Blacephalon
+Blaziken
 Celesteela
 Cinderace
 Mega Charizard X
@@ -118,13 +120,10 @@ Mega Medicham
 Rillaboom
 Tapu Fini
 Toxapex
-Urshifu-Rapid-Strike
 Volcarona
 Weavile
     `,
     15: `
-Blaziken
-Buzzwole
 Dragonite
 Excadrill
 Ferrothorn
@@ -135,6 +134,7 @@ Heatran
 Kommo-o
 Latias
 Regieleki
+Xurkitree
 Zapdos
     `,
     14: `
@@ -153,6 +153,7 @@ Mega Sableye
 Mega Venusaur
 Mew
 Mienshao
+Nihilego
 Pelipper
 Rotom-Wash
 Scizor
@@ -161,6 +162,7 @@ Thundurus-Incarnate
     13: `
 Amoonguss
 Azumarill
+Buzzwole
 Chansey
 Conkeldurr
 Jirachi
@@ -173,7 +175,6 @@ Mega Heracross
 Mega Swampert
 Mega Tyranitar
 Necrozma
-Nihilego
 Reuniclus
 Salamence
 Serperior
@@ -184,7 +185,6 @@ Tapu Bulu
 Terrakion
 Thundurus-Therian
 Tyranitar
-Xurkitree
     `,
     12: `
 Alakazam
@@ -247,13 +247,11 @@ Cobalion
 Crawdaunt
 Crobat
 Darmanitan
-Decidueye
 Donphan
 Empoleon
 Galarian Weezing
 Gardevoir
 Grimmsnarl
-Heliolisk
 Heracross
 Incineroar
 Krookodile
@@ -264,15 +262,14 @@ Meloetta
 Noivern
 Porygon-Z
 Porygon2
+Regidrago
 Roserade
 Rotom-Mow
 Salazzle
-Shaymin
 Talonflame
 Torkoal
 Tornadus-Incarnate
 Toxtricity
-Uxie
     `,
     9: `
 Aerodactyl
@@ -286,42 +283,48 @@ Galarian Slowbro
 Gigalith
 Gligar
 Goodra
+Heliolisk
 Jellicent
 Magnezone
 Mega Houndoom
 Mesprit
 Mimikyu
 Quagsire
-Regidrago
 Registeel
 Swampert
 Swellow
 Tsareena
 Umbreon
+Uxie
 Zygarde-10%
     `,
     8: `
+Alolan Marowak
 Araquanid
 Celebi
 Cloyster
 Cofagrigus
 Copperajah
+Decidueye
 Dhelmise
 Diancie
 Dragalge
 Durant
 Emboar
 Feraligatr
+Flygon
 Galvantula
 Indeedee
 Lycanroc-Midday
 Mega Absol
 Miltank
+Ninetales
 Pangoro
 Piloswine
 Politoed
 Polteageist
 Rhyperior
+Shaymin
 Stakataka
 Stunfisk
 Tentacruel
@@ -333,22 +336,20 @@ Zoroark
     `,
     7: `
 Accelgor
-Alolan Marowak
 Alolan Persian
 Alolan Raichu
 Arctozolt
 Comfey
-Druddigon
 Eelektross
 Escavalier
 Espeon
-Flygon
 Galarian Articuno
 Gastrodon
 Glastrier
 Hariyama
 Hitmonlee
 Hoopa
+Jolteon
 Mantine
 Mega Sceptile
 Mega Steelix
@@ -359,7 +360,6 @@ Sharpedo
 Sigilyph
 Sirfetch'd
 Slurpuff
-Sneasel
 Steelix
 Toxicroak
 Venomoth
@@ -379,6 +379,7 @@ Charizard
 Delphox
 Ditto
 Doublade
+Druddigon
 Forretress
 Froslass
 Golisopod
@@ -395,13 +396,13 @@ Mega Audino
 Mega Glalie
 Mega Manectric
 Mismagius
-Ninetales
 Omastar
 Palossand
 Passimian
 Rotom-Frost
 Runerigus
 Sandaconda
+Sneasel
 Vanilluxe
 Weezing
     `,
@@ -441,6 +442,7 @@ Tangela
 Tauros
 Victreebel
 Vileplume
+Wobbuffet
 Xatu
     `,
     4: `
@@ -461,7 +463,6 @@ Guzzlord
 Hitmonchan
 Honchkrow
 Houndoom
-Jolteon
 Kangaskhan
 Luxray
 Magmortar
@@ -578,7 +579,6 @@ Grotle
 Hippopotas
 Kadabra
 Leavanny
-Lickitung
 Lilligant
 Machoke
 Magmar
@@ -612,7 +612,6 @@ Unfezant
 Volbeat
 Walrein
 Wartortle
-Wobbuffet
 Zebstrika
     `,
 };

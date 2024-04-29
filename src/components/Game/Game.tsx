@@ -91,14 +91,22 @@ const PokemonSelector = ({
         if (inputRef.current) inputRef.current.value = search;
     }, [search]);
 
+    const points = getPointLabel(pokemon, valueByPokemonID);
+
     const PokemonInfo = (
         <>
             {onSelect && (
-                <Button onClick={() => onSelect(pokemon)}>
-                    Select Pokemon
+                <Button
+                    onClick={() =>
+                        confirm(
+                            `Are you sure you want to select ${pokemon.data.name} for ${points} points?`
+                        ) && onSelect(pokemon)
+                    }
+                >
+                    Select Current Pokemon
                 </Button>
             )}
-            <Title order={3}>{getPointLabel(pokemon, valueByPokemonID)}</Title>
+            <Title order={3}>{points}</Title>
             <Center>
                 <PokemonCard
                     pokemon={pokemon}
@@ -219,48 +227,52 @@ const Game = () => {
         });
     };
 
-    const selectPokemon = session && session.user.id === currentDrafter
-        ? async (pokemon: Pokemon) => {
-            const value = valueByPokemonID[pokemon.data.id];
-            if (value === 0)
-                return notifications.show({
-                    color: "red",
-                    title: "Banned Pokemon",
-                    message: `${pokemon.data.name} is a banned Pokemon!`,
-                });
+    const selectPokemon =
+        session && session.user.id === currentDrafter
+            ? async (pokemon: Pokemon) => {
+                const value = valueByPokemonID[pokemon.data.id];
+                if (value === 0)
+                    return notifications.show({
+                        color: "red",
+                        title: "Banned Pokemon",
+                        message: `${pokemon.data.name} is a banned Pokemon!`,
+                    });
 
-            const currentPointTotal = getPointTotal(
-                Object.values(playerInfoByID[session.user.id].selections),
-                valueByPokemonID
-            );
+                const currentPointTotal = getPointTotal(
+                    Object.values(playerInfoByID[session.user.id].selections),
+                    valueByPokemonID
+                );
 
-            const rulesetForPlayer = playerInfoByID[session.user.id].rules;
-            if (currentPointTotal + value > rulesetForPlayer.maxPoints)
-                return notifications.show({
-                    color: "red",
-                    title: "You don't have enough points",
-                    message: `${pokemon.data.name} is worth too many points!`,
-                });
+                const rulesetForPlayer =
+                    playerInfoByID[session.user.id].rules;
+                if (currentPointTotal + value > rulesetForPlayer.maxPoints)
+                    return notifications.show({
+                        color: "red",
+                        title: "You don't have enough points",
+                        message: `${pokemon.data.name} is worth too many points!`,
+                    });
 
-            const { error } = await supabase.from(gameSelectionTable).insert([
-                {
-                    game: gameInfo.id,
-                    pokemon_id: pokemon.data.id,
-                    player: session.user.id,
-                },
-            ]);
-            if (error)
-                return notifications.show({
-                    color: "red",
-                    title: "Couldn't Select Pokemon",
-                    message: `${error.message}`,
+                const { error } = await supabase
+                    .from(gameSelectionTable)
+                    .insert([
+                        {
+                            game: gameInfo.id,
+                            pokemon_id: pokemon.data.id,
+                            player: session.user.id,
+                        },
+                    ]);
+                if (error)
+                    return notifications.show({
+                        color: "red",
+                        title: "Couldn't Select Pokemon",
+                        message: `${error.message}`,
+                    });
+                notifications.show({
+                    title: "Added your selection",
+                    message: `You have added ${pokemon.data.name} to your team`,
                 });
-            notifications.show({
-                title: "Added your selection",
-                message: `You have added ${pokemon.data.name} to your team`,
-            });
-        }
-        : undefined;
+            }
+            : undefined;
 
     const alreadyChosenPokemon = (pokemon: Pokemon): boolean => {
         for (const id in pokemonByPlayerID) {
@@ -341,7 +353,7 @@ const Game = () => {
     const PokemonSelectorCol = (
         <Stack align="left" ta="left">
             <Title id="make-selection">Make a selection</Title>
-            <Button onClick={showRuleset}>See Point Ruleset</Button>
+            <Button onClick={showRuleset}>Browse Pokemon</Button>
             <PokemonSelector
                 onSelect={selectPokemon}
                 search={search}
@@ -366,6 +378,7 @@ const Game = () => {
             });
         return data;
     }, [playerInfoByID]);
+
     const PlayerSelectionsCol = (
         <Stack align="end">
             <Title>Player Selections</Title>
@@ -569,6 +582,7 @@ export const _GamePage = () => {
                 (payload) => {
                     console.log("Change received for players!", payload);
                     refreshAllPlayerInfo();
+                    refreshCurrentDrafter();
                     notifications.show({
                         title: "Update",
                         message: "A player update was triggered",
