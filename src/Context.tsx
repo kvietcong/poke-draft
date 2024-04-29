@@ -124,7 +124,9 @@ export const GameInfoProvider = ({ children }: { children: ReactNode }) => {
     const [currentDrafter, setCurrentDrafter] = useState<string>();
 
     return (
-        <GameInfoContext.Provider value={{ gameInfo, setGameInfo, currentDrafter, setCurrentDrafter }}>
+        <GameInfoContext.Provider
+            value={{ gameInfo, setGameInfo, currentDrafter, setCurrentDrafter }}
+        >
             {children}
         </GameInfoContext.Provider>
     );

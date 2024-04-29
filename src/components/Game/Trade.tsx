@@ -94,168 +94,168 @@ export const GameTradesAccordion = () => {
         <Accordion>
             {gameTrades.length > 0
                 ? gameTrades.map((trade) => {
-                      const confirmers = trade.confirmations.map((x) => x.id);
-                      const participants = Object.keys(
-                          tradeInfo.participantsByTrade[trade.id]
-                      );
+                    const confirmers = trade.confirmations.map((x) => x.id);
+                    const participants = Object.keys(
+                        tradeInfo.participantsByTrade[trade.id]
+                    );
 
-                      const executeTradeOrError = async () => {
-                          const error = await executeTrade(supabase, trade.id);
-                          if (error)
-                              return notifications.show({
-                                  color: "red",
-                                  title: "Couldn't execute trade",
-                                  message: `${error.message}`,
-                              });
-                      };
+                    const executeTradeOrError = async () => {
+                        const error = await executeTrade(supabase, trade.id);
+                        if (error)
+                            return notifications.show({
+                                color: "red",
+                                title: "Couldn't execute trade",
+                                message: `${error.message}`,
+                            });
+                    };
 
-                      const acceptTradeOrError = async () => {
-                          if (!session)
-                              return notifications.show({
-                                  color: "red",
-                                  title: "Couldn't execute trade",
-                                  message: "You aren't logged in",
-                              });
-                          const error = await acceptTrade(
-                              supabase,
-                              trade.id,
-                              session.user.id
-                          );
-                          if (error)
-                              return notifications.show({
-                                  color: "red",
-                                  title: "Couldn't execute trade",
-                                  message: `${error.message}`,
-                              });
-                      };
+                    const acceptTradeOrError = async () => {
+                        if (!session)
+                            return notifications.show({
+                                color: "red",
+                                title: "Couldn't execute trade",
+                                message: "You aren't logged in",
+                            });
+                        const error = await acceptTrade(
+                            supabase,
+                            trade.id,
+                            session.user.id
+                        );
+                        if (error)
+                            return notifications.show({
+                                color: "red",
+                                title: "Couldn't execute trade",
+                                message: `${error.message}`,
+                            });
+                    };
 
-                      const removeTradeOrError = async () => {
-                          const error = await removeTrade(supabase, trade.id);
-                          if (error)
-                              return notifications.show({
-                                  color: "red",
-                                  title: "Couldn't remove trade",
-                                  message: `${error.message}`,
-                              });
-                          notifications.show({
-                              title: "Removed Trade",
-                              message: "Successfully removed trade",
-                          });
-                      };
+                    const removeTradeOrError = async () => {
+                        const error = await removeTrade(supabase, trade.id);
+                        if (error)
+                            return notifications.show({
+                                color: "red",
+                                title: "Couldn't remove trade",
+                                message: `${error.message}`,
+                            });
+                        notifications.show({
+                            title: "Removed Trade",
+                            message: "Successfully removed trade",
+                        });
+                    };
 
-                      const isTotallyConfirmed = participants.every((x) =>
-                          confirmers.includes(x)
-                      );
-                      const isUserTheRequester =
-                          session && session.user.id === trade.requester.id;
-                      const isUserAParticipant =
-                          session && participants.includes(session.user.id);
-                      let TradeStateOrConfirm;
-                      if (isTotallyConfirmed)
-                          if (isUserTheRequester || isUserAParticipant)
-                              TradeStateOrConfirm = (
-                                  <Button onClick={executeTradeOrError}>
-                                      Execute Trade
-                                  </Button>
-                              );
-                          else
-                              TradeStateOrConfirm = (
-                                  <Text>All participants have accepted</Text>
-                              );
-                      else if (
-                          isUserAParticipant &&
-                          !confirmers.includes(session.user.id)
-                      )
-                          TradeStateOrConfirm = (
-                              <Button onClick={acceptTradeOrError}>
-                                  Accept Trade
-                              </Button>
-                          );
-                      else
-                          TradeStateOrConfirm = (
-                              <Text>Not all participants have accepted</Text>
-                          );
+                    const isTotallyConfirmed = participants.every((x) =>
+                        confirmers.includes(x)
+                    );
+                    const isUserTheRequester =
+                        session && session.user.id === trade.requester.id;
+                    const isUserAParticipant =
+                        session && participants.includes(session.user.id);
+                    let TradeStateOrConfirm;
+                    if (isTotallyConfirmed)
+                        if (isUserTheRequester || isUserAParticipant)
+                            TradeStateOrConfirm = (
+                                <Button onClick={executeTradeOrError}>
+                                    Execute Trade
+                                </Button>
+                            );
+                        else
+                            TradeStateOrConfirm = (
+                                <Text>All participants have accepted</Text>
+                            );
+                    else if (
+                        isUserAParticipant &&
+                        !confirmers.includes(session.user.id)
+                    )
+                        TradeStateOrConfirm = (
+                            <Button onClick={acceptTradeOrError}>
+                                Accept Trade
+                            </Button>
+                        );
+                    else
+                        TradeStateOrConfirm = (
+                            <Text>Not all participants have accepted</Text>
+                        );
 
-                      const TradeTitle = (
-                          <Text>
-                              Trade requested by{" "}
-                              <strong>{trade.requester.name}</strong> involving{" "}
-                              <strong>
-                                  {Object.values(
-                                      tradeInfo.participantsByTrade[trade.id]
-                                  ).join(", ")}
-                              </strong>
-                              <span
-                                  style={{
-                                      float: "right",
-                                      paddingRight: "0.5rem",
-                                  }}
-                              >
-                                  {trade.id}
-                              </span>
-                          </Text>
-                      );
+                    const TradeTitle = (
+                        <Text>
+                            Trade requested by{" "}
+                            <strong>{trade.requester.name}</strong> involving{" "}
+                            <strong>
+                                {Object.values(
+                                    tradeInfo.participantsByTrade[trade.id]
+                                ).join(", ")}
+                            </strong>
+                            <span
+                                style={{
+                                    float: "right",
+                                    paddingRight: "0.5rem",
+                                }}
+                            >
+                                {trade.id}
+                            </span>
+                        </Text>
+                    );
 
-                      return (
-                          <Accordion.Item key={trade.id} value={trade.id}>
-                              <Accordion.Control>
-                                  {TradeTitle}
-                              </Accordion.Control>
-                              <Accordion.Panel>
-                                  <Stack align="center">
-                                      {trade.confirmations.length > 0 && (
-                                          <Accepters
-                                              confirmations={
-                                                  trade.confirmations
-                                              }
-                                          />
-                                      )}
-                                      {TradeStateOrConfirm}
-                                      {session &&
-                                          [
-                                              ...participants,
-                                              trade.requester.id,
-                                          ].includes(session.user.id) && (
-                                              <Button
-                                                  onClick={removeTradeOrError}
-                                              >
-                                                  Reject Trade
-                                              </Button>
-                                          )}
-                                      <Flex
-                                          wrap="wrap"
-                                          gap="xs"
-                                          align="center"
-                                          justify="center"
-                                      >
-                                          {trade.transactions.map(
-                                              (transaction) => (
-                                                  <TradeLine
-                                                      key={
-                                                          transaction.selection
-                                                              .pokemonID
-                                                      }
-                                                      from={
-                                                          transaction.oldOwner
-                                                              .name
-                                                      }
-                                                      to={
-                                                          transaction.newOwner
-                                                              .name
-                                                      }
-                                                      pokemon={searchPokemon(
-                                                          transaction.selection
-                                                              .pokemonID
-                                                      )}
-                                                  />
-                                              )
-                                          )}
-                                      </Flex>
-                                  </Stack>
-                              </Accordion.Panel>
-                          </Accordion.Item>
-                      );
-                  })
+                    return (
+                        <Accordion.Item key={trade.id} value={trade.id}>
+                            <Accordion.Control>
+                                {TradeTitle}
+                            </Accordion.Control>
+                            <Accordion.Panel>
+                                <Stack align="center">
+                                    {trade.confirmations.length > 0 && (
+                                        <Accepters
+                                            confirmations={
+                                                trade.confirmations
+                                            }
+                                        />
+                                    )}
+                                    {TradeStateOrConfirm}
+                                    {session &&
+                                        [
+                                            ...participants,
+                                            trade.requester.id,
+                                        ].includes(session.user.id) && (
+                                            <Button
+                                                onClick={removeTradeOrError}
+                                            >
+                                                Reject Trade
+                                            </Button>
+                                        )}
+                                    <Flex
+                                        wrap="wrap"
+                                        gap="xs"
+                                        align="center"
+                                        justify="center"
+                                    >
+                                        {trade.transactions.map(
+                                            (transaction) => (
+                                                <TradeLine
+                                                    key={
+                                                        transaction.selection
+                                                            .pokemonID
+                                                    }
+                                                    from={
+                                                        transaction.oldOwner
+                                                            .name
+                                                    }
+                                                    to={
+                                                        transaction.newOwner
+                                                            .name
+                                                    }
+                                                    pokemon={searchPokemon(
+                                                        transaction.selection
+                                                            .pokemonID
+                                                    )}
+                                                />
+                                            )
+                                        )}
+                                    </Flex>
+                                </Stack>
+                            </Accordion.Panel>
+                        </Accordion.Item>
+                    );
+                })
                 : "No Trades Yet"}
         </Accordion>
     );
@@ -435,22 +435,38 @@ export const TradeCreator = () => {
 
     const transactions = Object.keys(transactionInfoBySelectionID).length >
         0 && (
-        <>
-            <Flex wrap="wrap" gap="xs" align="center" justify="center">
-                {Object.values(transactionInfoBySelectionID).map(
-                    (transactionInfo) => (
-                        <TradeLine
-                            key={transactionInfo.pokemon.data.id}
-                            pokemon={transactionInfo.pokemon}
-                            from={playerInfoByID[transactionInfo.oldOwner].name}
-                            to={playerInfoByID[transactionInfo.newOwner].name}
-                        />
-                    )
-                )}
-            </Flex>
-            <Button onClick={submitTradeOrError}>Submit Trade</Button>
-        </>
-    );
+            <>
+                <Button
+                    onClick={() =>
+                        confirm(
+                            "Are you sure you want to reset your transactions?"
+                        ) && setTransactionInfoBySelectionID({})
+                    }
+                >
+                    Clear Transactions
+                </Button>
+                <Flex wrap="wrap" gap="xs" align="center" justify="center">
+                    {Object.values(transactionInfoBySelectionID).map(
+                        (transactionInfo) => (
+                            <TradeLine
+                                key={transactionInfo.pokemon.data.id}
+                                pokemon={transactionInfo.pokemon}
+                                from={playerInfoByID[transactionInfo.oldOwner].name}
+                                to={playerInfoByID[transactionInfo.newOwner].name}
+                            />
+                        )
+                    )}
+                </Flex>
+                <Button
+                    onClick={() =>
+                        confirm("Are you sure you want to submit this trade?") &&
+                        submitTradeOrError()
+                    }
+                >
+                    Submit Trade
+                </Button>
+            </>
+        );
 
     return (
         <Stack align="center">
@@ -484,9 +500,9 @@ export const TradeCreator = () => {
                 onChange={(e) =>
                     e.currentTarget.value
                         ? setNewOwner({
-                              id: e.currentTarget.value,
-                              name: e.currentTarget.name,
-                          })
+                            id: e.currentTarget.value,
+                            name: e.currentTarget.name,
+                        })
                         : setNewOwner(undefined)
                 }
                 w="100%"

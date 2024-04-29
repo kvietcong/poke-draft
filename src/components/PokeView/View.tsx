@@ -1,6 +1,6 @@
 import classes from "./View.module.css";
 import appClasses from "@/App.module.css";
-import { Dispatch, ReactNode, SetStateAction } from "react";
+import { Dispatch, ReactNode, SetStateAction, useMemo } from "react";
 import { getTypeColor } from "@/util/PokemonColors";
 import { getStatColor } from "@/util/StatColors";
 import {
@@ -295,7 +295,16 @@ export const PokemonAccordion = ({
     sectionLabelTransformer?: (label: string) => ReactNode;
 }) => {
     const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
-    const accordionItems = data.map(([label, pokemonData]) => {
+    const sortedData = useMemo(() => {
+        return data.map(([label, pokemonData]) => [
+            label,
+            pokemonData.toSorted((a, b) =>
+                a.data.name.localeCompare(b.data.name)
+            ),
+        ]) as AccordionData;
+    }, [data]);
+
+    const accordionItems = sortedData.map(([label, pokemonData]) => {
         return (
             <Accordion.Item key={label} value={label}>
                 <Accordion.Control>
