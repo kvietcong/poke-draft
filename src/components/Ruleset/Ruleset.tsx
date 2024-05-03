@@ -10,15 +10,15 @@ import {
     Center,
     Title,
     Stack,
-    Input,
     Button,
     Slider,
     Chip,
     Checkbox,
-    Collapse,
     Autocomplete,
     MultiSelect,
     Grid,
+    Modal,
+    RangeSlider,
 } from "@mantine/core";
 import Fuse from "fuse.js";
 import { Loading } from "@/components/Loading/Loading";
@@ -29,7 +29,6 @@ import {
     CardOnClick,
     PokemonAccordion,
 } from "@/components/PokeView/View";
-import getGenerationName from "@/util/GenerationName";
 import getStatColor from "@/util/StatColors";
 import { getFirstScrollableParent } from "@/util/helpers";
 import { fetchPointRulesetInfo } from "@/util/database";
@@ -92,8 +91,14 @@ export const RulesetView = ({
         "Sp. Defense",
         "Speed",
     ];
-    const [baseStatsFilter, setBaseStatsFilter] = useState(
-        Object.fromEntries(baseStatsLabels.map((label) => [label, 0]))
+    const [baseStatsFilter, setBaseStatsFilter] = useDebouncedState(
+        Object.fromEntries(
+            baseStatsLabels.map((label) => [
+                label,
+                [0, 255] as [number, number],
+            ])
+        ),
+        400
     );
 
     const defaultCardOnClick = (pokemon: Pokemon) =>
@@ -104,11 +109,11 @@ export const RulesetView = ({
     }>({});
 
     const handleBaseStatsFilterChange =
-        (label: string) => (newValue: number) => {
-            setBaseStatsFilter((prevValues) => ({
-                ...prevValues,
+        (label: string) => (newValue: [number, number]) => {
+            setBaseStatsFilter({
+                ...baseStatsFilter,
                 [label]: newValue,
-            }));
+            });
         };
 
     const nameFuzzySearcher = useMemo(() => {
@@ -153,7 +158,7 @@ export const RulesetView = ({
         }
         if (abilityFilterText != "") {
             const abilityPredicate = (pokemon: Pokemon) => {
-                return Object.values(pokemon.data.abilities as object).includes(
+                return Object.values(pokemon.data.abilities).includes(
                     abilityFilterText
                 );
             };
@@ -171,7 +176,11 @@ export const RulesetView = ({
             };
             predicates.push(movesPredicate);
         }
-        if (Object.values(baseStatsFilter).some((value) => value > 0)) {
+        if (
+            Object.values(baseStatsFilter).some(
+                ([minValue, maxValue]) => minValue > 0 || maxValue < 255
+            )
+        ) {
             const statAbbreviations: Map<string, StatID> = new Map([
                 ["hp", "hp"],
                 ["attack", "atk"],
@@ -182,11 +191,14 @@ export const RulesetView = ({
             ]);
             const baseStatsPredicate = (pokemon: Pokemon) => {
                 return Object.entries(baseStatsFilter).every(
-                    ([label, value]) =>
-                        value <=
-                        pokemon.data.baseStats[
-                            statAbbreviations.get(label.toLowerCase()) ?? "hp"
-                        ]
+                    ([label, [minValue, maxValue]]) => {
+                        const stat =
+                            pokemon.data.baseStats[
+                                statAbbreviations.get(label.toLowerCase()) ??
+                                    "hp"
+                            ];
+                        return minValue <= stat && stat <= maxValue;
+                    }
                 );
             };
             predicates.push(baseStatsPredicate);
@@ -247,17 +259,26 @@ export const RulesetView = ({
                     {pointRulesetInfo.name}
                 </Text>
             </Title>
-            <Group>
-                <Input
-                    defaultValue={name}
-                    style={{ flexGrow: 1 }}
-                    placeholder="Search for Pokemon"
-                    onChange={(e) => setName(e.target.value)}
-                />
-            </Group>
-            <Button onClick={filterHandlers.toggle}>Toggle Filters</Button>
-            <Collapse in={showFilters}>
+            <Modal
+                opened={showFilters}
+                onClose={filterHandlers.close}
+                title="Filters"
+                radius="md"
+                keepMounted={true}
+                size="75%"
+                centered
+            >
                 <Stack>
+                    <Autocomplete
+                        limit={5}
+                        label="Pokemon Name"
+                        defaultValue={name}
+                        onChange={setName}
+                        placeholder="Search for Pokemon"
+                        data={pointRulesetInfo.pointRules.map(
+                            (r) => r.pokemonID
+                        )}
+                    />
                     <Group justify="left">
                         <Chip.Group multiple value={types} onChange={setTypes}>
                             {Object.entries(colorByType).map(
@@ -305,15 +326,18 @@ export const RulesetView = ({
                                     <Text>{label}</Text>
                                 </Grid.Col>
                                 <Grid.Col span={1}>
-                                    <Text>{baseStatsFilter[label]}</Text>
+                                    <Text>
+                                        {baseStatsFilter[label][0]}-
+                                        {baseStatsFilter[label][1]}
+                                    </Text>
                                 </Grid.Col>
                                 <Grid.Col span={9}>
-                                    <Slider
+                                    <RangeSlider
                                         color={getStatColor(label)}
                                         min={0}
                                         max={255}
-                                        defaultValue={0}
-                                        value={baseStatsFilter[label]}
+                                        step={1}
+                                        defaultValue={baseStatsFilter[label]}
                                         onChange={handleBaseStatsFilterChange(
                                             label
                                         )}
@@ -335,7 +359,7 @@ export const RulesetView = ({
                         />
                     </Group>
                 </Stack>
-            </Collapse>
+            </Modal>
             <PokemonAccordion
                 open={open}
                 setOpen={setOpen}
@@ -346,7 +370,7 @@ export const RulesetView = ({
                 }
                 cardOnClick={cardOnClick ?? defaultCardOnClick}
             />
-            <Group pos="sticky" left={25} bottom={20} style={{ zIndex: 500 }}>
+            <Group pos="sticky" left={25} bottom={20}>
                 <Button
                     onClick={() =>
                         setOpen(
@@ -377,6 +401,7 @@ export const RulesetView = ({
                 >
                     Scroll Down/Up
                 </Button>
+                <Button onClick={filterHandlers.toggle}>Filters</Button>
             </Group>
         </Stack>
     );
