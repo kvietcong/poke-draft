@@ -230,48 +230,48 @@ const Game = () => {
     const selectPokemon =
         session && session.user.id === currentDrafter
             ? async (pokemon: Pokemon) => {
-                const value = valueByPokemonID[pokemon.data.id];
-                if (value === 0)
-                    return notifications.show({
-                        color: "red",
-                        title: "Banned Pokemon",
-                        message: `${pokemon.data.name} is a banned Pokemon!`,
-                    });
+                  const value = valueByPokemonID[pokemon.data.id];
+                  if (value === 0)
+                      return notifications.show({
+                          color: "red",
+                          title: "Banned Pokemon",
+                          message: `${pokemon.data.name} is a banned Pokemon!`,
+                      });
 
-                const currentPointTotal = getPointTotal(
-                    Object.values(playerInfoByID[session.user.id].selections),
-                    valueByPokemonID
-                );
+                  const currentPointTotal = getPointTotal(
+                      Object.values(playerInfoByID[session.user.id].selections),
+                      valueByPokemonID
+                  );
 
-                const rulesetForPlayer =
-                    playerInfoByID[session.user.id].rules;
-                if (currentPointTotal + value > rulesetForPlayer.maxPoints)
-                    return notifications.show({
-                        color: "red",
-                        title: "You don't have enough points",
-                        message: `${pokemon.data.name} is worth too many points!`,
-                    });
+                  const rulesetForPlayer =
+                      playerInfoByID[session.user.id].rules;
+                  if (currentPointTotal + value > rulesetForPlayer.maxPoints)
+                      return notifications.show({
+                          color: "red",
+                          title: "You don't have enough points",
+                          message: `${pokemon.data.name} is worth too many points!`,
+                      });
 
-                const { error } = await supabase
-                    .from(gameSelectionTable)
-                    .insert([
-                        {
-                            game: gameInfo.id,
-                            pokemon_id: pokemon.data.id,
-                            player: session.user.id,
-                        },
-                    ]);
-                if (error)
-                    return notifications.show({
-                        color: "red",
-                        title: "Couldn't Select Pokemon",
-                        message: `${error.message}`,
-                    });
-                notifications.show({
-                    title: "Added your selection",
-                    message: `You have added ${pokemon.data.name} to your team`,
-                });
-            }
+                  const { error } = await supabase
+                      .from(gameSelectionTable)
+                      .insert([
+                          {
+                              game: gameInfo.id,
+                              pokemon_id: pokemon.data.id,
+                              player: session.user.id,
+                          },
+                      ]);
+                  if (error)
+                      return notifications.show({
+                          color: "red",
+                          title: "Couldn't Select Pokemon",
+                          message: `${error.message}`,
+                      });
+                  notifications.show({
+                      title: "Added your selection",
+                      message: `You have added ${pokemon.data.name} to your team`,
+                  });
+              }
             : undefined;
 
     const alreadyChosenPokemon = (pokemon: Pokemon): boolean => {
@@ -345,8 +345,8 @@ const Game = () => {
             {currentDrafter
                 ? `${playerInfoByID[currentDrafter].name}'s Turn To Pick`
                 : isDraftingFinished
-                    ? "Drafting is Complete"
-                    : "Game hasn't started"}
+                  ? "Drafting is Complete"
+                  : "Game hasn't started"}
         </Title>
     );
 
