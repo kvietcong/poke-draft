@@ -12,7 +12,7 @@ import {
     Title,
 } from "@mantine/core";
 import classes from "@/App.module.css";
-import { Pokemon, ValueByPokemonID } from "@/types";
+import { GameStage, Pokemon, ValueByPokemonID } from "@/types";
 import {
     AccordionSectionData,
     BasicStatDisplay,
@@ -68,7 +68,7 @@ const getPointTotal = (
     }, 0);
 };
 
-const PokemonSelector = ({
+const PokemonSearcher = ({
     onSelect,
     search,
     setSearch,
@@ -107,14 +107,12 @@ const PokemonSelector = ({
                 </Button>
             )}
             <Title order={3}>{points}</Title>
-            <Center>
-                <PokemonCard
-                    pokemon={pokemon}
-                    onClick={() =>
-                        smogonOnClick(pokemon, pointRulesetInfo.generation)
-                    }
-                />
-            </Center>
+            <PokemonCard
+                pokemon={pokemon}
+                onClick={() =>
+                    smogonOnClick(pokemon, pointRulesetInfo.generation)
+                }
+            />
             <Title>Stats</Title>
             <BasicStatDisplay pokemon={pokemon} />
         </>
@@ -141,8 +139,84 @@ const PokemonSelector = ({
     );
 };
 
+const joinGame = async (gameID: string, userID: string) => {
+    const { error } = await supabase.from(gamePlayerTable).insert([
+        {
+            game: gameID,
+            player: userID,
+        },
+    ]);
+    if (error)
+        return notifications.show({
+            color: "red",
+            title: "Couldn't join game",
+            message: `${error.message}`,
+        });
+    notifications.show({
+        title: "Game Joined",
+        message: "Joined successfully",
+    });
+};
+
+const beginDrafting = async (gameID: string) => {
+    const { error } = await supabase
+        .from(gameTable)
+        .update([
+            {
+                game_stage: GameStage.Drafting,
+            },
+        ])
+        .eq("id", gameID);
+    if (error)
+        return notifications.show({
+            color: "red",
+            title: "Couldn't begin drafting",
+            message: `${error.message}`,
+        });
+    notifications.show({
+        title: "Drafting begins",
+        message: "Drafting has commenced",
+    });
+};
+
+const concludeDrafting = async (gameID: string) => {
+    const { error } = await supabase
+        .from(gameTable)
+        .update([
+            {
+                game_stage: GameStage.Battling,
+            },
+        ])
+        .eq("id", gameID);
+    if (error)
+        return notifications.show({
+            color: "red",
+            title: "Couldn't conclude drafting",
+            message: `${error.message}`,
+        });
+    notifications.show({
+        title: "Drafting concluded",
+        message: "Battling has commenced",
+    });
+};
+
+const getChosenPokemonPredicate =
+    (pokemonByPlayerID: { [playerID: string]: Pokemon[] }) =>
+    (pokemon: Pokemon): boolean => {
+        for (const id in pokemonByPlayerID) {
+            if (
+                pokemonByPlayerID[id]
+                    .map((p) => p.data.id)
+                    .includes(pokemon.data.id)
+            )
+                return false;
+        }
+        return true;
+    };
+
 const Game = () => {
-    const { session, prefersMinimal } = useContext(AppContext);
+    const { session, prefersMinimal, setPrefersMinimal } =
+        useContext(AppContext);
     const { gameInfo, currentDrafter } = useContext(GameInfoContext);
     const { playerInfoByID, allPlayerInfo } = useContext(GamePlayersContext);
     const { dex, pointRulesetInfo, valueByPokemonID } =
@@ -195,37 +269,11 @@ const Game = () => {
     )
         return <Loading />;
 
-    const doesGameHavePlayers = Object.keys(playerInfoByID).length > 1;
-    const isDraftingFinished = !currentDrafter && doesGameHavePlayers;
-
-    const getIsJoinable = () => {
-        const counts = Object.keys(playerInfoByID).map(
-            (id) => pokemonByPlayerID[id]?.length ?? 0
-        );
-        const lowestCount = counts.length ? Math.min(...counts) : 0;
-        return (
-            lowestCount === 0 && session && !(session.user.id in playerInfoByID)
-        );
-    };
-
-    const joinGame = async () => {
-        const { error } = await supabase.from(gamePlayerTable).insert([
-            {
-                game: gameInfo.id,
-                player: session?.user.id,
-            },
-        ]);
-        if (error)
-            return notifications.show({
-                color: "red",
-                title: "Couldn't join game",
-                message: `${error.message}`,
-            });
-        notifications.show({
-            title: "Game Joined",
-            message: `Welcome to ${gameInfo.name}!`,
-        });
-    };
+    const isJoining = gameInfo.gameStage === GameStage.Joining;
+    const isDrafting = gameInfo.gameStage === GameStage.Drafting;
+    const isBattling = gameInfo.gameStage === GameStage.Battling;
+    const isDraftOngoing = isDrafting && currentDrafter;
+    const isReadyToBattle = isDrafting && !currentDrafter;
 
     const selectPokemon =
         session && session.user.id === currentDrafter
@@ -274,18 +322,6 @@ const Game = () => {
               }
             : undefined;
 
-    const alreadyChosenPokemon = (pokemon: Pokemon): boolean => {
-        for (const id in pokemonByPlayerID) {
-            if (
-                pokemonByPlayerID[id]
-                    .map((p) => p.data.id)
-                    .includes(pokemon.data.id)
-            )
-                return false;
-        }
-        return true;
-    };
-
     const RulesetModal = (
         <Modal
             opened={isRulesetOpened}
@@ -297,8 +333,18 @@ const Game = () => {
             centered
         >
             <RulesetView
-                cardOnClick={rulesetCardOnClick}
-                extraRulePredicates={[alreadyChosenPokemon]}
+                cardOnClick={
+                    isDraftOngoing
+                        ? rulesetCardOnClick
+                        : (pokemon) =>
+                              smogonOnClick(
+                                  pokemon,
+                                  pointRulesetInfo.generation
+                              )
+                }
+                extraRulePredicates={[
+                    getChosenPokemonPredicate(pokemonByPlayerID),
+                ]}
             />
         </Modal>
     );
@@ -340,21 +386,11 @@ const Game = () => {
         </Title>
     );
 
-    const DraftStateTitle = (
-        <Title order={2}>
-            {currentDrafter
-                ? `${playerInfoByID[currentDrafter].name}'s Turn To Pick`
-                : isDraftingFinished
-                  ? "Drafting is Complete"
-                  : "Game hasn't started"}
-        </Title>
-    );
-
-    const PokemonSelectorCol = (
-        <Stack align="left" ta="left">
+    const PokemonSelector = isDraftOngoing && (
+        <Stack align="center" ta="center">
             <Title id="make-selection">Make a selection</Title>
             <Button onClick={showRuleset}>Browse Pokemon</Button>
-            <PokemonSelector
+            <PokemonSearcher
                 onSelect={selectPokemon}
                 search={search}
                 setSearch={setSearch}
@@ -379,11 +415,11 @@ const Game = () => {
         return data;
     }, [playerInfoByID]);
 
-    const PlayerSelectionsCol = (
-        <Stack align="end">
+    const PlayerSelections = (
+        <Stack align="center" ta="center">
             <Title>Player Selections</Title>
-            <Button w="30%" onClick={showTrading}>
-                Trade
+            <Button onClick={() => setPrefersMinimal(!prefersMinimal)}>
+                Toggle Pokemon View Mode ({prefersMinimal ? "Minimal" : "Full"})
             </Button>
             <PokemonAccordion
                 open={open}
@@ -395,7 +431,16 @@ const Game = () => {
                 sectionLabelTransformer={(playerID) => {
                     const playerInfo = playerInfoByID[playerID];
                     const playerPokemon = Object.values(playerInfo.selections);
-                    return `${playerInfo.name} - ${playerInfo.rules.maxPoints - getPointTotal(playerPokemon, valueByPokemonID)}/${playerInfo.rules.maxPoints} Points Left - ${playerPokemon.length}/${playerInfo.rules.maxTeamSize} Pokemon Chosen`;
+                    let label = playerInfo.name;
+                    if (isDraftOngoing) {
+                        const { maxPoints, maxTeamSize } = playerInfo.rules;
+                        const pointsLeft =
+                            maxPoints -
+                            getPointTotal(playerPokemon, valueByPokemonID);
+                        const teamSize = playerPokemon.length;
+                        label += ` - ${pointsLeft}/${maxPoints} Points Left - ${teamSize}/${maxTeamSize} Pokemon Chosen`;
+                    }
+                    return label;
                 }}
                 cardLabeler={(pokemon) =>
                     getPointLabel(pokemon, valueByPokemonID)
@@ -410,8 +455,6 @@ const Game = () => {
     return (
         <>
             {RulesetModal}
-            {TradingModal}
-            {GameTitle}
             <Button
                 left="1rem"
                 bottom="1rem"
@@ -421,25 +464,32 @@ const Game = () => {
             >
                 See Point Ruleset
             </Button>
-            <Button
-                right="1rem"
-                bottom="1rem"
-                pos="fixed"
-                onClick={showTrading}
-                style={{ zIndex: 1 }}
-            >
-                Trade
-            </Button>
+            {isBattling && TradingModal}
+            {isBattling && (
+                <Button
+                    right="1rem"
+                    bottom="1rem"
+                    pos="fixed"
+                    onClick={showTrading}
+                    style={{ zIndex: 1 }}
+                >
+                    Trade
+                </Button>
+            )}
+            {GameTitle}
             <Center>
                 <Stack justify="center" ta="center" w="80%">
-                    {getIsJoinable() ? (
-                        <Button onClick={joinGame}>Join Game</Button>
-                    ) : (
+                    {isJoining &&
                         session &&
                         !(session.user.id in playerInfoByID) && (
-                            <Text>Game isn't accepting anymore players</Text>
-                        )
-                    )}
+                            <Button
+                                onClick={() =>
+                                    joinGame(gameInfo.id, session.user.id)
+                                }
+                            >
+                                Join Game
+                            </Button>
+                        )}
                     <Title order={3}>
                         Point Ruleset:{" "}
                         <Text
@@ -453,13 +503,30 @@ const Game = () => {
                             {pointRulesetInfo.name}
                         </Text>
                     </Title>
-                    {DraftStateTitle}
-                    <Grid mih="100vh">
-                        <Grid.Col span={3}>{PokemonSelectorCol}</Grid.Col>
-                        <Grid.Col ta="right" span={9}>
-                            {PlayerSelectionsCol}
-                        </Grid.Col>
-                    </Grid>
+                    <Text>
+                        Current Game Stage:{" "}
+                        <strong>{GameStage[gameInfo.gameStage]}</strong>
+                    </Text>
+                    {isJoining && gameInfo.owner === session?.user.id && (
+                        <Button onClick={() => beginDrafting(gameInfo.id)}>
+                            Begin Drafting
+                        </Button>
+                    )}
+                    {isReadyToBattle && gameInfo.owner === session?.user.id && (
+                        <Button onClick={() => concludeDrafting(gameInfo.id)}>
+                            Conclude Drafting
+                        </Button>
+                    )}
+                    {PokemonSelector ? (
+                        <Grid mih="100vh">
+                            <Grid.Col span={3}>{PokemonSelector}</Grid.Col>
+                            <Grid.Col ta="right" span={9}>
+                                {PlayerSelections}
+                            </Grid.Col>
+                        </Grid>
+                    ) : (
+                        PlayerSelections
+                    )}
                 </Stack>
             </Center>
         </>

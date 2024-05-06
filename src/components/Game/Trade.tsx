@@ -143,9 +143,9 @@ export const GameTradesAccordion = () => {
                           });
                       };
 
-                      const isTotallyConfirmed = participants.every((x) =>
-                          confirmers.includes(x)
-                      );
+                      const isTotallyConfirmed =
+                          participants.length &&
+                          participants.every((x) => confirmers.includes(x));
                       const isUserTheRequester =
                           session && session.user.id === trade.requester.id;
                       const isUserAParticipant =
