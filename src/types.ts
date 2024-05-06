@@ -26,12 +26,17 @@ export type PointRulesetInfo = {
     pointRules: { pokemonID: string; value: number }[];
 };
 
+export enum GameStage {
+    Joining = 0,
+    Drafting,
+    Battling,
+}
 export type GameInfo = {
     id: string;
     name: string;
     owner: string;
     createdAt: string;
-    gameStage: number;
+    gameStage: GameStage;
     pointRuleset: string;
 };
 

@@ -47,7 +47,7 @@ export const RulesetView = ({
         useContext(PointRulesetContext);
     if (!pointRulesetInfo || !dex || !pokemonIDsByValue) return;
 
-    const { prefersMinimal } = useContext(AppContext);
+    const { prefersMinimal, setPrefersMinimal } = useContext(AppContext);
 
     const pointRules = useMemo(() => {
         const pointRules = Object.entries(
@@ -399,7 +399,10 @@ export const RulesetView = ({
                         });
                     }}
                 >
-                    Scroll Down/Up
+                    Scroll
+                </Button>
+                <Button onClick={() => setPrefersMinimal(!prefersMinimal)}>
+                    Toggle View ({prefersMinimal ? "Minimal" : "Full"})
                 </Button>
                 <Button onClick={filterHandlers.toggle}>Filters</Button>
             </Group>
