@@ -1,7 +1,7 @@
 import classes from "./View.module.css";
 import appClasses from "@/App.module.css";
 import { Dispatch, ReactNode, SetStateAction, useMemo } from "react";
-import { getTypeColor } from "@/util/PokemonColors";
+import { colorByType, getTypeColor } from "@/util/PokemonColors";
 import { getStatColor } from "@/util/StatColors";
 import {
     Card,
@@ -16,12 +16,20 @@ import {
     Group,
     Flex,
     Accordion,
+    Modal,
+    Autocomplete,
+    Chip,
+    Checkbox,
+    MultiSelect,
+    Slider,
+    RangeSlider,
 } from "@mantine/core";
 import { Pokemon } from "@/types";
-import { useClipboard } from "@mantine/hooks";
+import { useClipboard, useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { Dex, TypeName } from "@pkmn/dex";
+import { Dex, ModdedDex, TypeName } from "@pkmn/dex";
 import { smogonOnClick } from "@/util/Pokemon";
+import { PokeFilter } from "@/util/hooks";
 
 export type CardOnClick = (pokemon: Pokemon, event: React.MouseEvent) => void;
 const defaultCardOnClick = (pokemon: Pokemon) =>
@@ -361,5 +369,147 @@ export const PokemonAccordion = ({
         >
             {accordionItems}
         </Accordion>
+    );
+};
+
+type DisclosureHandlers = ReturnType<typeof useDisclosure>[1];
+export const PokemonFilterModal = ({
+    pokeFilter,
+    showFilterModal,
+    filterModalHandlers,
+
+    dex,
+    children,
+    placeChildrenAfter,
+}: {
+    pokeFilter: PokeFilter;
+    showFilterModal: boolean;
+    filterModalHandlers: DisclosureHandlers;
+
+    dex?: ModdedDex;
+    children?: ReactNode;
+    placeChildrenAfter?: boolean;
+}) => {
+    const { suggestions, theMoves } = useMemo(() => {
+        const suggestions = (dex ?? Dex).species
+            .all()
+            .map((p) => p.id)
+            .toSorted();
+        const theMoves = Object.values(
+            (dex ?? Dex).moves.all().reduce<{
+                [id: string]: { value: string; label: string };
+            }>((acc, move) => {
+                acc[move.id] = {
+                    value: move.id,
+                    label: move.name,
+                };
+                return acc;
+            }, {})
+        );
+        return { suggestions, theMoves };
+    }, [dex]);
+
+    return (
+        <Modal
+            opened={showFilterModal}
+            onClose={filterModalHandlers.close}
+            title="Filters"
+            radius="md"
+            keepMounted={true}
+            size="75%"
+            centered
+        >
+            <Stack>
+                {!placeChildrenAfter && children}
+                <Autocomplete
+                    limit={5}
+                    label="Pokemon Name"
+                    value={pokeFilter.name}
+                    onChange={pokeFilter.setName}
+                    placeholder="Search for Pokemon"
+                    data={suggestions}
+                />
+                <Group justify="left">
+                    <Chip.Group
+                        multiple
+                        value={pokeFilter.types}
+                        onChange={pokeFilter.setTypes}
+                    >
+                        {Object.entries(colorByType).map(([type, color]) => (
+                            <Chip color={color} key={type} value={type}>
+                                {type}
+                            </Chip>
+                        ))}
+                        <Checkbox
+                            checked={pokeFilter.matchAllTypes}
+                            onChange={(e) =>
+                                pokeFilter.setMatchAllTypes(
+                                    e.currentTarget.checked
+                                )
+                            }
+                            label="Match All Types"
+                        />
+                    </Chip.Group>
+                </Group>
+                <Group>
+                    <Autocomplete
+                        label="Ability"
+                        limit={5}
+                        data={(dex ?? Dex).abilities
+                            .all()
+                            .map((ability) => ability.name)}
+                        value={pokeFilter.ability}
+                        onChange={pokeFilter.setAbility}
+                    />
+                </Group>
+                <MultiSelect
+                    searchable
+                    data={theMoves}
+                    value={pokeFilter.moves}
+                    onChange={pokeFilter.setMoves}
+                    label="Moves"
+                    placeholder="Filter for a move (latest gen)"
+                />
+                <Stack>
+                    {Object.entries(pokeFilter.stats).map(
+                        ([label, [min, max]]) => (
+                            <Grid key={label}>
+                                <Grid.Col span={2}>
+                                    <Text>{label}</Text>
+                                </Grid.Col>
+                                <Grid.Col span={1}>
+                                    <Text>
+                                        {min}-{max}
+                                    </Text>
+                                </Grid.Col>
+                                <Grid.Col span={9}>
+                                    <RangeSlider
+                                        color={getStatColor(label)}
+                                        min={0}
+                                        max={255}
+                                        step={1}
+                                        defaultValue={[min, max]}
+                                        onChange={pokeFilter.setStat(label)}
+                                        size="xl"
+                                    />
+                                </Grid.Col>
+                            </Grid>
+                        )
+                    )}
+                </Stack>
+                <Group>
+                    <Text>Fuzzy search multiplier: </Text>
+                    <Slider
+                        min={0}
+                        max={0.5}
+                        step={0.05}
+                        style={{ flexGrow: 1 }}
+                        defaultValue={pokeFilter.fuzziness}
+                        onChangeEnd={pokeFilter.setFuzziness}
+                    />
+                </Group>
+                {placeChildrenAfter && children}
+            </Stack>
+        </Modal>
     );
 };

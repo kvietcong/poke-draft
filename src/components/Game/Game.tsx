@@ -10,6 +10,8 @@ import {
     Text,
     TextInput,
     Title,
+    Group,
+    MultiSelect,
 } from "@mantine/core";
 import classes from "@/App.module.css";
 import { GameStage, Pokemon, ValueByPokemonID } from "@/types";
@@ -19,6 +21,7 @@ import {
     CardOnClick,
     PokemonAccordion,
     PokemonCard,
+    PokemonFilterModal,
 } from "@/components/PokeView/View";
 import { Loading } from "../Loading/Loading";
 import { useDebouncedState, useDisclosure } from "@mantine/hooks";
@@ -46,6 +49,8 @@ import {
     PointRulesetContext,
     WholeGameProvider,
 } from "@/Context";
+import { usePokeFilter } from "@/util/hooks";
+import { Dex } from "@pkmn/dex";
 
 export const getPointLabel = (
     pokemon: Pokemon,
@@ -259,12 +264,22 @@ const Game = () => {
             );
     }, [playerInfoByID]);
 
+    const [showFilterModal, filterModalHandlers] = useDisclosure(false);
+    const [shown, setShown] = useState<string[]>([]);
+    const pokeFilter = usePokeFilter(dex ?? Dex);
+
+    const showAll = () => setShown(Object.keys(playerInfoByID ?? {}));
+    useEffect(() => {
+        showAll();
+    }, [playerInfoByID]);
+
     if (
         !gameInfo ||
         !pointRulesetInfo ||
         !playerInfoByID ||
         !pokemonByPlayerID ||
         !valueByPokemonID ||
+        !dex ||
         false
     )
         return <Loading />;
@@ -412,8 +427,20 @@ const Game = () => {
                 ];
                 return sectionInfo as AccordionSectionData;
             });
-        return data;
-    }, [playerInfoByID]);
+        const doesPokemonMatch = (pokemon: Pokemon) =>
+            pokeFilter.predicates.every((predicate) => predicate(pokemon));
+        const result = data.reduce<AccordionSectionData[]>(
+            (acc, [playerID, pokemon]) => {
+                if (!shown.includes(playerID)) return acc;
+                const filteredPokemon = pokemon.filter(doesPokemonMatch);
+                if (filteredPokemon.length)
+                    acc.push([playerID, filteredPokemon]);
+                return acc;
+            },
+            []
+        );
+        return result;
+    }, [playerInfoByID, pokeFilter]);
 
     const PlayerSelections = (
         <Stack align="center" ta="center">
@@ -455,27 +482,43 @@ const Game = () => {
     return (
         <>
             {RulesetModal}
-            <Button
-                left="1rem"
-                bottom="1rem"
-                pos="fixed"
-                onClick={showRuleset}
-                style={{ zIndex: 1 }}
-            >
-                See Point Ruleset
-            </Button>
             {isBattling && TradingModal}
-            {isBattling && (
-                <Button
-                    right="1rem"
-                    bottom="1rem"
-                    pos="fixed"
-                    onClick={showTrading}
-                    style={{ zIndex: 1 }}
-                >
-                    Trade
-                </Button>
-            )}
+            <PokemonFilterModal
+                pokeFilter={pokeFilter}
+                dex={dex}
+                showFilterModal={showFilterModal}
+                filterModalHandlers={filterModalHandlers}
+            >
+                <Group justify="center" align="end">
+                    <MultiSelect
+                        searchable
+                        data={Object.entries(playerInfoByID).map(
+                            ([id, info]) => ({
+                                value: id,
+                                label: info.name,
+                            })
+                        )}
+                        value={shown}
+                        onChange={setShown}
+                        label="Players to Show"
+                        w="75%"
+                    />
+                    {Object.keys(playerInfoByID).length > shown.length ? (
+                        <Button w="20%" onClick={showAll}>
+                            Show All
+                        </Button>
+                    ) : (
+                        <Button w="20%" onClick={() => setShown([])}>
+                            Show None
+                        </Button>
+                    )}
+                </Group>
+            </PokemonFilterModal>
+            <Group right="1rem" bottom="1rem" pos="fixed" style={{ zIndex: 1 }}>
+                <Button onClick={showRuleset}>See Pokemon</Button>
+                <Button onClick={filterModalHandlers.open}>Filters</Button>
+                {isBattling && <Button onClick={showTrading}>Trade</Button>}
+            </Group>
             {GameTitle}
             <Center>
                 <Stack justify="center" ta="center" w="80%">
