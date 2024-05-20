@@ -1,8 +1,17 @@
 import { Pokemon } from "@/types";
 import { ModdedDex, StatID } from "@pkmn/dex";
 import Fuse from "fuse.js";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchMovesByPokemon } from "./Pokemon";
+
+const statAbbreviations: Map<string, StatID> = new Map([
+    ["hp", "hp"],
+    ["attack", "atk"],
+    ["defense", "def"],
+    ["sp. attack", "spa"],
+    ["sp. defense", "spd"],
+    ["speed", "spe"],
+]);
 
 export type PokeFilter = ReturnType<typeof usePokeFilter>;
 export const usePokeFilter = (dex: ModdedDex) => {
@@ -28,12 +37,15 @@ export const usePokeFilter = (dex: ModdedDex) => {
             ])
         )
     );
-    const setStat = (label: string) => (newValue: [number, number]) => {
-        setStats((stats) => ({
-            ...stats,
-            [label]: newValue,
-        }));
-    };
+    const setStat = useCallback(
+        (label: string) => (newValue: [number, number]) => {
+            setStats((stats) => ({
+                ...stats,
+                [label]: newValue,
+            }));
+        },
+        [setStats]
+    );
 
     const [movesByPokemon, setMovesByPokemon] = useState<{
         [id: string]: string[];
@@ -44,8 +56,6 @@ export const usePokeFilter = (dex: ModdedDex) => {
             setMovesByPokemon(await fetchMovesByPokemon(dex));
         })();
     }, [dex]);
-
-    const predicates = [];
 
     const nameFuzzySearcher = useMemo(() => {
         const result = new Fuse(
@@ -58,75 +68,81 @@ export const usePokeFilter = (dex: ModdedDex) => {
         return result;
     }, [dex, fuzziness]);
 
-    if (name.length) {
-        const matchedIDs = nameFuzzySearcher
-            .search(name)
-            .map((result) => result.item.id);
-        const namePredicate = (pokemon: Pokemon) =>
-            matchedIDs.includes(pokemon.data.id);
-        predicates.push(namePredicate);
-    }
+    const predicates = useMemo(() => {
+        const predicates = [];
+        if (name.length) {
+            const matchedIDs = nameFuzzySearcher
+                .search(name)
+                .map((result) => result.item.id);
+            const namePredicate = (pokemon: Pokemon) =>
+                matchedIDs.includes(pokemon.data.id);
+            predicates.push(namePredicate);
+        }
 
-    if (types.length) {
-        const typePredicate = (pokemon: Pokemon) => {
-            const fn = matchAllTypes ? types.every : types.some;
-            return fn.bind(types)((type: string) =>
-                pokemon.data.types
-                    .map((type) => type.toLowerCase())
-                    .includes(type)
-            );
-        };
-        predicates.push(typePredicate);
-    }
+        if (types.length) {
+            const typePredicate = (pokemon: Pokemon) => {
+                const fn = matchAllTypes ? types.every : types.some;
+                return fn.bind(types)((type: string) =>
+                    pokemon.data.types
+                        .map((type) => type.toLowerCase())
+                        .includes(type)
+                );
+            };
+            predicates.push(typePredicate);
+        }
 
-    if (ability != "") {
-        const abilityPredicate = (pokemon: Pokemon) => {
-            return Object.values(pokemon.data.abilities).includes(ability);
-        };
-        predicates.push(abilityPredicate);
-    }
+        if (ability != "") {
+            const abilityPredicate = (pokemon: Pokemon) => {
+                return Object.values(pokemon.data.abilities).includes(ability);
+            };
+            predicates.push(abilityPredicate);
+        }
 
-    if (moves.length) {
-        const movesPredicate = (pokemon: Pokemon) => {
-            return moves.every(
-                (move: string) =>
-                    pokemon.data.id in movesByPokemon &&
-                    movesByPokemon[pokemon.data.id]
-                        .map((move) => move.toLowerCase())
-                        .includes(move)
-            );
-        };
-        predicates.push(movesPredicate);
-    }
+        if (moves.length) {
+            const movesPredicate = (pokemon: Pokemon) => {
+                return moves.every(
+                    (move: string) =>
+                        pokemon.data.id in movesByPokemon &&
+                        movesByPokemon[pokemon.data.id]
+                            .map((move) => move.toLowerCase())
+                            .includes(move)
+                );
+            };
+            predicates.push(movesPredicate);
+        }
 
-    if (
-        Object.values(stats).some(
-            ([minValue, maxValue]) => minValue > 0 || maxValue < 255
-        )
-    ) {
-        const statAbbreviations: Map<string, StatID> = new Map([
-            ["hp", "hp"],
-            ["attack", "atk"],
-            ["defense", "def"],
-            ["sp. attack", "spa"],
-            ["sp. defense", "spd"],
-            ["speed", "spe"],
-        ]);
-        const baseStatsPredicate = (pokemon: Pokemon) => {
-            return Object.entries(stats).every(
-                ([label, [minValue, maxValue]]) => {
-                    const stat =
-                        pokemon.data.baseStats[
-                            statAbbreviations.get(label.toLowerCase()) ?? "hp"
-                        ];
-                    return minValue <= stat && stat <= maxValue;
-                }
-            );
-        };
-        predicates.push(baseStatsPredicate);
-    }
+        if (
+            Object.values(stats).some(
+                ([minValue, maxValue]) => minValue > 0 || maxValue < 255
+            )
+        ) {
+            const baseStatsPredicate = (pokemon: Pokemon) => {
+                return Object.entries(stats).every(
+                    ([label, [minValue, maxValue]]) => {
+                        const stat =
+                            pokemon.data.baseStats[
+                                statAbbreviations.get(label.toLowerCase()) ??
+                                    "hp"
+                            ];
+                        return minValue <= stat && stat <= maxValue;
+                    }
+                );
+            };
+            predicates.push(baseStatsPredicate);
+        }
+        return predicates;
+    }, [
+        name,
+        fuzziness,
+        types,
+        matchAllTypes,
+        ability,
+        moves,
+        stats,
+        nameFuzzySearcher,
+    ]);
 
-    return {
+    const result = {
         // Values
         name,
         fuzziness,
@@ -149,4 +165,25 @@ export const usePokeFilter = (dex: ModdedDex) => {
         // etc
         predicates,
     };
+    return useMemo(
+        () => result,
+        [
+            name,
+            fuzziness,
+            types,
+            matchAllTypes,
+            ability,
+            moves,
+            stats,
+            setName,
+            setFuzziness,
+            setTypes,
+            setMatchAllTypes,
+            setAbility,
+            setMoves,
+            setStats,
+            setStat,
+            predicates,
+        ]
+    );
 };

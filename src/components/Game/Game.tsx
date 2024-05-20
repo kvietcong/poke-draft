@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useContext, useRef } from "react";
+import { useState, useEffect, useMemo, useContext } from "react";
 import { useParams } from "react-router-dom";
 import supabase from "@/supabase";
 import {
@@ -8,7 +8,6 @@ import {
     Grid,
     Stack,
     Text,
-    TextInput,
     Title,
     Group,
     MultiSelect,
@@ -17,18 +16,16 @@ import classes from "@/App.module.css";
 import { GameStage, Pokemon, ValueByPokemonID } from "@/types";
 import {
     AccordionSectionData,
-    BasicStatDisplay,
     CardOnClick,
     PokemonAccordion,
-    PokemonCard,
     PokemonFilterModal,
 } from "@/components/PokeView/View";
 import { Loading } from "../Loading/Loading";
-import { useDebouncedState, useDisclosure } from "@mantine/hooks";
+import { useDisclosure } from "@mantine/hooks";
 import { AppContext } from "@/App";
 import { notifications } from "@mantine/notifications";
 import { RulesetView } from "../Ruleset/Ruleset";
-import { searchPokemon, smogonOnClick } from "@/util/Pokemon";
+import { smogonOnClick } from "@/util/Pokemon";
 import {
     fetchGameInfo,
     fetchAllPlayerInfo,
@@ -51,6 +48,7 @@ import {
 } from "@/Context";
 import { usePokeFilter } from "@/util/hooks";
 import { Dex } from "@pkmn/dex";
+import { PokemonSearcher } from "./PokemonSearch";
 
 export const getPointLabel = (
     pokemon: Pokemon,
@@ -71,77 +69,6 @@ const getPointTotal = (
     return pokemon.reduce((acc, next) => {
         return acc + (valueByPokemonID[next.data.id] ?? 1);
     }, 0);
-};
-
-const PokemonSearcher = ({
-    onSelect,
-    search,
-    setSearch,
-}: {
-    onSelect?: (pokemon: Pokemon) => any;
-    search: string;
-    setSearch: (newValue: string) => void;
-}) => {
-    const { dex, pointRulesetInfo, valueByPokemonID } =
-        useContext(PointRulesetContext);
-
-    if (!dex || !pointRulesetInfo || !valueByPokemonID) return;
-
-    const pokemon = useMemo(() => {
-        return searchPokemon(search.trim(), dex);
-    }, [search]);
-
-    const inputRef = useRef<HTMLInputElement>(null);
-    useEffect(() => {
-        if (inputRef.current) inputRef.current.value = search;
-    }, [search]);
-
-    const points = getPointLabel(pokemon, valueByPokemonID);
-
-    const PokemonInfo = (
-        <>
-            {onSelect && (
-                <Button
-                    onClick={() =>
-                        confirm(
-                            `Are you sure you want to select ${pokemon.data.name} for ${points} points?`
-                        ) && onSelect(pokemon)
-                    }
-                >
-                    Select Current Pokemon
-                </Button>
-            )}
-            <Title order={3}>{points}</Title>
-            <PokemonCard
-                pokemon={pokemon}
-                onClick={() =>
-                    smogonOnClick(pokemon, pointRulesetInfo.generation)
-                }
-            />
-            <Title>Stats</Title>
-            <BasicStatDisplay pokemon={pokemon} />
-        </>
-    );
-
-    let error_msg = null;
-    if (!pokemon.data.exists) error_msg = `Couldn't find ${search}`;
-    else if (pokemon.data.gen > pointRulesetInfo.generation)
-        error_msg = `${pokemon.data.name} isn't in generation ${pointRulesetInfo.generation}`;
-
-    const SearchError = error_msg && <Title order={2}>{error_msg}</Title>;
-
-    return (
-        <>
-            <TextInput
-                ref={inputRef}
-                label="Search for a Pokemon"
-                placeholder="Pokemon Name"
-                defaultValue={search}
-                onChange={(e) => setSearch(e.currentTarget.value)}
-            />
-            {search.trim() && (SearchError || PokemonInfo)}
-        </>
-    );
 };
 
 const joinGame = async (gameID: string, userID: string) => {
@@ -245,7 +172,7 @@ const Game = () => {
 
     const [open, setOpen] = useState<string[]>([]);
 
-    const [search, setSearch] = useDebouncedState("", 150);
+    const [search, setSearch] = useState("");
     const rulesetCardOnClick: CardOnClick = (pokemon) => {
         setSearch(pokemon.data.id);
         hideRuleset();
@@ -402,18 +329,16 @@ const Game = () => {
     );
 
     const PokemonSelector = isDraftOngoing && (
-        <Stack align="center" ta="center">
-            <Title id="make-selection">Make a selection</Title>
+        <PokemonSearcher
+            onSelect={selectPokemon}
+            search={search}
+            setSearch={setSearch}
+        >
             <Button onClick={showRuleset}>Browse Pokemon</Button>
-            <PokemonSearcher
-                onSelect={selectPokemon}
-                search={search}
-                setSearch={setSearch}
-            />
-        </Stack>
+        </PokemonSearcher>
     );
 
-    const accordionData = useMemo(() => {
+    const playerSelectionData = useMemo(() => {
         const data = Object.entries(playerInfoByID)
             .sort(
                 (a, b) =>
@@ -433,28 +358,30 @@ const Game = () => {
             (acc, [playerID, pokemon]) => {
                 if (!shown.includes(playerID)) return acc;
                 const filteredPokemon = pokemon.filter(doesPokemonMatch);
-                if (filteredPokemon.length)
-                    acc.push([playerID, filteredPokemon]);
+                acc.push([playerID, filteredPokemon]);
                 return acc;
             },
             []
         );
         return result;
-    }, [playerInfoByID, pokeFilter]);
+    }, [playerInfoByID, pokeFilter, shown]);
 
     const PlayerSelections = (
         <Stack align="center" ta="center">
             <Title>Player Selections</Title>
-            <Button onClick={() => setPrefersMinimal(!prefersMinimal)}>
-                Toggle Pokemon View Mode ({prefersMinimal ? "Minimal" : "Full"})
-            </Button>
+            {!isJoining && (
+                <Button onClick={() => setPrefersMinimal(!prefersMinimal)}>
+                    Toggle Pokemon View Mode (
+                    {prefersMinimal ? "Minimal" : "Full"})
+                </Button>
+            )}
             <PokemonAccordion
                 open={open}
                 setOpen={setOpen}
-                data={accordionData}
+                data={playerSelectionData}
                 isMinimal={prefersMinimal}
                 allowMultiple={true}
-                defaultValue={accordionData.map((x) => x[0])}
+                defaultValue={playerSelectionData.map((x) => x[0])}
                 sectionLabelTransformer={(playerID) => {
                     const playerInfo = playerInfoByID[playerID];
                     const playerPokemon = Object.values(playerInfo.selections);
@@ -475,6 +402,7 @@ const Game = () => {
                 cardOnClick={(pokemon) =>
                     smogonOnClick(pokemon, pointRulesetInfo.generation)
                 }
+                getIsLabelDisabled={() => isJoining}
             />
         </Stack>
     );
@@ -550,10 +478,20 @@ const Game = () => {
                         Current Game Stage:{" "}
                         <strong>{GameStage[gameInfo.gameStage]}</strong>
                     </Text>
-                    {isJoining && gameInfo.owner === session?.user.id && (
-                        <Button onClick={() => beginDrafting(gameInfo.id)}>
-                            Begin Drafting
-                        </Button>
+                    {isJoining &&
+                        gameInfo.owner === session?.user.id &&
+                        Object.keys(playerInfoByID).length > 1 && (
+                            <Button onClick={() => beginDrafting(gameInfo.id)}>
+                                Begin Drafting
+                            </Button>
+                        )}
+                    {isDrafting && currentDrafter && (
+                        <Text>
+                            <strong>
+                                {playerInfoByID[currentDrafter].name}'s
+                            </strong>{" "}
+                            Turn to Select
+                        </Text>
                     )}
                     {isReadyToBattle && gameInfo.owner === session?.user.id && (
                         <Button onClick={() => concludeDrafting(gameInfo.id)}>
