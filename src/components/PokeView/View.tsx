@@ -230,7 +230,7 @@ export const BaseStatDisplay = ({ pokemon }: { pokemon: Pokemon }) => {
     };
 
     return (
-        <Grid gutter="xl">
+        <Grid gutter="xl" w="100%">
             <Grid.Col span={12}>
                 {StatBar("HP", pokemon.data.baseStats.hp)}
                 {StatBar("Attack", pokemon.data.baseStats.atk)}
@@ -288,6 +288,7 @@ export const PokemonAccordion = ({
     cardLabeler,
     defaultValue,
     allowMultiple,
+    getIsLabelDisabled,
     sectionLabelTransformer,
 }: {
     data: AccordionData;
@@ -300,6 +301,7 @@ export const PokemonAccordion = ({
     cardLabeler?: (pokemon: Pokemon) => ReactNode;
     defaultValue?: string[] | string | null;
     allowMultiple?: boolean;
+    getIsLabelDisabled?: (label: string) => boolean;
     sectionLabelTransformer?: (label: string) => ReactNode;
 }) => {
     const PokemonDisplay = isMinimal ? PokemonPill : PokemonCard;
@@ -315,7 +317,11 @@ export const PokemonAccordion = ({
     const accordionItems = sortedData.map(([label, pokemonData]) => {
         return (
             <Accordion.Item key={label} value={label}>
-                <Accordion.Control>
+                <Accordion.Control
+                    disabled={
+                        getIsLabelDisabled ? getIsLabelDisabled(label) : false
+                    }
+                >
                     {sectionLabelTransformer
                         ? sectionLabelTransformer(label)
                         : label}
