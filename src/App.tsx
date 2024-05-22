@@ -6,24 +6,10 @@ import { Router } from "./Router";
 import { theme } from "./theme";
 
 import { SpeedInsights } from "@vercel/speed-insights/react";
-import React, { createContext, useEffect, useState } from "react";
-import { Session } from "@supabase/supabase-js";
 import supabase from "./supabase";
-import { getLocalPreference, setLocalPreference } from "./util/helpers";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-export type AppContext = {
-    session: Session | null;
-    setSession: React.Dispatch<React.SetStateAction<Session | null>>;
-    prefersMinimal: boolean;
-    setPrefersMinimal: (newValue: boolean) => void;
-};
-export const AppContext = createContext<AppContext>({
-    session: null,
-    setSession: () => {},
-    prefersMinimal: false,
-    setPrefersMinimal: () => {},
-});
+import { useSessionStore } from "./Stores";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -34,19 +20,7 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
-    const [session, setSession] = useState<Session | null>(null);
-    const [prefersMinimal, setPrefersMinimal] = useState(false);
-
-    const setPrefersMinimalWrapper = (newValue: boolean) => {
-        setLocalPreference("prefersMinimal", String(newValue));
-        setPrefersMinimal(newValue);
-    };
-
-    useEffect(() => {
-        const localPreference = getLocalPreference("prefersMinimal");
-        if (localPreference) setPrefersMinimal(localPreference === "true");
-        else setPrefersMinimalWrapper(false);
-    }, []);
+    const setSession = useSessionStore(state => state.setSession);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -63,21 +37,12 @@ export default function App() {
     }, [setSession]);
 
     return (
-        <AppContext.Provider
-            value={{
-                session,
-                setSession,
-                prefersMinimal,
-                setPrefersMinimal: setPrefersMinimalWrapper,
-            }}
-        >
-            <QueryClientProvider client={queryClient}>
-                <MantineProvider defaultColorScheme="auto" theme={theme}>
-                    <Notifications autoClose={1800} />
-                    <Router />
-                    <SpeedInsights />
-                </MantineProvider>
-            </QueryClientProvider>
-        </AppContext.Provider>
+        <QueryClientProvider client={queryClient}>
+            <MantineProvider defaultColorScheme="auto" theme={theme}>
+                <Notifications autoClose={1800} />
+                <Router />
+                <SpeedInsights />
+            </MantineProvider>
+        </QueryClientProvider>
     );
 }

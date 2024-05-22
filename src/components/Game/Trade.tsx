@@ -23,7 +23,6 @@ import {
 } from "../PokeView/View";
 import { searchPokemon } from "@/util/Pokemon";
 import { notifications } from "@mantine/notifications";
-import { AppContext } from "@/App";
 import { getPointLabel } from "./Game";
 import { useGameID, usePointRulesetID } from "@/Context";
 import { Participant, Pokemon } from "@/types";
@@ -33,6 +32,7 @@ import {
     useGameTradesQuery,
     usePointRulesetQuery,
 } from "@/Queries";
+import { useSessionStore } from "@/Stores";
 
 const TradeLine = ({
     pokemon,
@@ -64,7 +64,7 @@ const Accepters = ({ confirmations }: { confirmations: Participant[] }) => (
 );
 
 export const GameTradesAccordion = () => {
-    const { session } = useContext(AppContext);
+    const session = useSessionStore(state => state.session);
     const gameID = useGameID();
     const gameTrades = useGameTradesQuery(gameID).data!;
     const { playerInfoByID } = useGamePlayersQuery(gameID).data!;
@@ -263,7 +263,7 @@ export const GameTradesAccordion = () => {
 };
 
 export const TradeCreator = () => {
-    const { session } = useContext(AppContext);
+    const session = useSessionStore(state => state.session);
     const gameID = useGameID();
     const gameInfo = useGameInfoQuery(gameID).data!;
     const { playerInfoByID, allPlayerInfo } = useGamePlayersQuery(gameID).data!;

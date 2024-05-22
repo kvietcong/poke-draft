@@ -1,5 +1,5 @@
 import classes from "@/App.module.css";
-import { useState, useMemo, useContext } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { Text, Group, Center, Title, Stack, Button } from "@mantine/core";
 import { Loading } from "@/components/Loading/Loading";
@@ -13,10 +13,10 @@ import {
 } from "@/components/PokeView/View";
 import { getFirstScrollableParent } from "@/util/helpers";
 import { getPokemon, searchPokemon, smogonOnClick } from "@/util/Pokemon";
-import { AppContext } from "@/App";
 import { usePokeFilter } from "@/util/hooks";
 import { usePointRulesetQuery } from "@/Queries";
 import { PointRulesetIDContext, usePointRulesetID } from "@/Context";
+import { usePreferenceStore } from "@/Stores";
 
 export const RulesetView = ({
     cardOnClick,
@@ -28,7 +28,7 @@ export const RulesetView = ({
     const { dex, pointRulesetInfo, valueByPokemonID, pokemonIDsByValue } =
         usePointRulesetQuery(usePointRulesetID()).data!;
 
-    const { prefersMinimal, setPrefersMinimal } = useContext(AppContext);
+    const { prefersMinimal, setPrefersMinimal } = usePreferenceStore();
 
     const pointRules = useMemo(() => {
         const pointRules = Object.entries(

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useContext } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import supabase from "@/supabase";
 import {
@@ -22,7 +22,6 @@ import {
 } from "@/components/PokeView/View";
 import { Loading } from "../Loading/Loading";
 import { useDisclosure } from "@mantine/hooks";
-import { AppContext } from "@/App";
 import { notifications } from "@mantine/notifications";
 import { RulesetView } from "../Ruleset/Ruleset";
 import { smogonOnClick } from "@/util/Pokemon";
@@ -45,6 +44,7 @@ import {
     useGameTradesQuery,
     usePointRulesetQuery,
 } from "@/Queries";
+import { usePreferenceStore, useSessionStore } from "@/Stores";
 
 export const getPointLabel = (
     pokemon: Pokemon,
@@ -143,8 +143,8 @@ const getChosenPokemonPredicate =
     };
 
 const Game = () => {
-    const { session, prefersMinimal, setPrefersMinimal } =
-        useContext(AppContext);
+    const { prefersMinimal, setPrefersMinimal } = usePreferenceStore();
+    const session = useSessionStore(state => state.session);
     const gameID = useGameID();
     const currentDrafter = useCurrentDrafterQuery(gameID).data!;
     const gameInfo = useGameInfoQuery(gameID).data!;
