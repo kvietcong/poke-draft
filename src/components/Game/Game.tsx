@@ -35,7 +35,6 @@ import {
 import { GameTradesAccordion, TradeCreator } from "./Trade";
 import { GameIDContext, PointRulesetIDContext, useGameID } from "@/Context";
 import { usePokeFilter } from "@/util/hooks";
-import { Dex } from "@pkmn/dex";
 import { PokemonSearcher } from "./PokemonSearch";
 import {
     useCurrentDrafterQuery,
@@ -143,9 +142,11 @@ const getChosenPokemonPredicate =
     };
 
 const Game = () => {
-    const { prefersMinimal, setPrefersMinimal } = usePreferenceStore();
-    const session = useSessionStore(state => state.session);
     const gameID = useGameID();
+
+    const { prefersMinimal, togglePrefersMinimal } = usePreferenceStore();
+    const session = useSessionStore((state) => state.session);
+
     const currentDrafter = useCurrentDrafterQuery(gameID).data!;
     const gameInfo = useGameInfoQuery(gameID).data!;
     const { playerInfoByID, allPlayerInfo } = useGamePlayersQuery(gameID).data!;
@@ -154,7 +155,6 @@ const Game = () => {
     ).data!;
 
     const pokemonByPlayerID = useMemo(() => {
-        if (!allPlayerInfo || !dex) return;
         return allPlayerInfo.reduce<{ [playerID: string]: Pokemon[] }>(
             (acc, next) => {
                 acc[next.id] = Object.values(next.selections);
@@ -180,34 +180,20 @@ const Game = () => {
             ?.scrollIntoView({ behavior: "smooth" });
     };
 
-    useEffect(() => {
-        if (playerInfoByID)
-            setOpen(
-                Object.keys(playerInfoByID).filter(
-                    (id) =>
-                        Object.keys(playerInfoByID[id].selections).length > 0
-                )
-            );
-    }, [playerInfoByID]);
-
     const [showFilterModal, filterModalHandlers] = useDisclosure(false);
-    const [shown, setShown] = useState<string[]>([]);
-    const pokeFilter = usePokeFilter(dex ?? Dex);
+    const [shownPlayers, setShownPlayers] = useState<string[]>([]);
+    const pokeFilter = usePokeFilter(dex);
 
-    const showAll = () => setShown(Object.keys(playerInfoByID ?? {}));
+    const showAllPlayers = () => setShownPlayers(Object.keys(playerInfoByID));
+
     useEffect(() => {
-        showAll();
+        showAllPlayers();
+        setOpen(
+            Object.keys(playerInfoByID).filter(
+                (id) => Object.keys(playerInfoByID[id].selections).length > 0
+            )
+        );
     }, [playerInfoByID]);
-
-    if (
-        !pointRulesetInfo ||
-        !playerInfoByID ||
-        !pokemonByPlayerID ||
-        !valueByPokemonID ||
-        !dex ||
-        false
-    )
-        return <Loading />;
 
     const isJoining = gameInfo.gameStage === GameStage.Joining;
     const isDrafting = gameInfo.gameStage === GameStage.Drafting;
@@ -302,7 +288,7 @@ const Game = () => {
             <Stack>
                 <Title>Game Trades</Title>
                 <GameTradesAccordion />
-                {session && (
+                {session && session.user.id in playerInfoByID && (
                     <>
                         <Title>Make a Trade</Title>
                         <TradeCreator />
@@ -354,7 +340,7 @@ const Game = () => {
             pokeFilter.predicates.every((predicate) => predicate(pokemon));
         const result = data.reduce<AccordionSectionData[]>(
             (acc, [playerID, pokemon]) => {
-                if (!shown.includes(playerID)) return acc;
+                if (!shownPlayers.includes(playerID)) return acc;
                 const filteredPokemon = pokemon.filter(doesPokemonMatch);
                 acc.push([playerID, filteredPokemon]);
                 return acc;
@@ -362,13 +348,13 @@ const Game = () => {
             []
         );
         return result;
-    }, [playerInfoByID, pokeFilter, shown]);
+    }, [playerInfoByID, pokeFilter, shownPlayers]);
 
     const PlayerSelections = (
         <Stack align="center" ta="center">
             <Title>Player Selections</Title>
             {!isJoining && (
-                <Button onClick={() => setPrefersMinimal(!prefersMinimal)}>
+                <Button onClick={togglePrefersMinimal}>
                     Toggle Pokemon View Mode (
                     {prefersMinimal ? "Minimal" : "Full"})
                 </Button>
@@ -424,17 +410,18 @@ const Game = () => {
                                 label: info.name,
                             })
                         )}
-                        value={shown}
-                        onChange={setShown}
+                        value={shownPlayers}
+                        onChange={setShownPlayers}
                         label="Players to Show"
                         w="75%"
                     />
-                    {Object.keys(playerInfoByID).length > shown.length ? (
-                        <Button w="20%" onClick={showAll}>
+                    {Object.keys(playerInfoByID).length >
+                    shownPlayers.length ? (
+                        <Button w="20%" onClick={showAllPlayers}>
                             Show All
                         </Button>
                     ) : (
-                        <Button w="20%" onClick={() => setShown([])}>
+                        <Button w="20%" onClick={() => setShownPlayers([])}>
                             Show None
                         </Button>
                     )}
@@ -596,7 +583,7 @@ export const GamePage = () => {
     }, [id]);
 
     const gameTrades = gameTradesQuery.data;
-    const playerInfoByID = gamePlayersQuery.data?.allPlayerInfo;
+    const playerInfoByID = gamePlayersQuery.data?.playerInfoByID;
     useEffect(() => {
         if (!gameTrades || !playerInfoByID) return;
 
@@ -613,8 +600,8 @@ export const GamePage = () => {
                 (payload) => {
                     console.log("New Trade Confirmation Received!", payload);
                     gameTradesQuery.refetch();
-                    const playerName =
-                        playerInfoByID[(payload.new as any).participant].name;
+                    const playerID = (payload.new as any).participant as string;
+                    const playerName = playerInfoByID[playerID].name;
                     notifications.show({
                         title: "Trade Update",
                         message: `${playerName} confirmed trade ${(payload.new as any).trade}`,
@@ -651,7 +638,6 @@ export const GamePage = () => {
 
     if (
         pointRulesetQuery.isPending ||
-        !pointRulesetQuery.data ||
         gamePlayersQuery.isPending ||
         gameInfoQuery.isPending ||
         currentDrafterQuery.isLoading ||

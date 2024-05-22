@@ -5,7 +5,7 @@ import {
     acceptTrade,
     removeTrade,
 } from "@/util/database";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loading } from "../Loading/Loading";
 import {
     Accordion,
@@ -64,7 +64,7 @@ const Accepters = ({ confirmations }: { confirmations: Participant[] }) => (
 );
 
 export const GameTradesAccordion = () => {
-    const session = useSessionStore(state => state.session);
+    const session = useSessionStore((state) => state.session);
     const gameID = useGameID();
     const gameTrades = useGameTradesQuery(gameID).data!;
     const { playerInfoByID } = useGamePlayersQuery(gameID).data!;
@@ -263,7 +263,7 @@ export const GameTradesAccordion = () => {
 };
 
 export const TradeCreator = () => {
-    const session = useSessionStore(state => state.session);
+    const session = useSessionStore((state) => state.session);
     const gameID = useGameID();
     const gameInfo = useGameInfoQuery(gameID).data!;
     const { playerInfoByID, allPlayerInfo } = useGamePlayersQuery(gameID).data!;
@@ -369,8 +369,8 @@ export const TradeCreator = () => {
         );
 
     const submitTradeOrError = async () => {
+        console.log(session, gameInfo);
         const error = await submitTrade(
-            supabase,
             gameInfo.id,
             session.user.id,
             Object.entries(transactionInfoBySelectionID).reduce<{

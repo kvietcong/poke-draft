@@ -248,7 +248,6 @@ export const removeTrade = async (
 };
 
 export const submitTrade = async (
-    supabase: SupabaseClient,
     gameID: string,
     requester: string,
     newOwnerByselectionID: { [id: string]: string }

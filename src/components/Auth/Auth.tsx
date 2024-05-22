@@ -61,8 +61,8 @@ export const LoginView = () => {
 };
 
 export const MyProfileView = () => {
-    const { prefersMinimal, setPrefersMinimal } = usePreferenceStore();
-    const session = useSessionStore(state => state.session);
+    const { prefersMinimal, togglePrefersMinimal } = usePreferenceStore();
+    const session = useSessionStore((state) => state.session);
 
     if (!session)
         return (
@@ -130,7 +130,7 @@ export const MyProfileView = () => {
                 </Grid>
                 <Stack>
                     <ColorSchemeToggle />
-                    <Button onClick={() => setPrefersMinimal(!prefersMinimal)}>
+                    <Button onClick={togglePrefersMinimal}>
                         Toggle Minimal Preference (Now Preferring{" "}
                         {prefersMinimal ? "Minimal" : "Full"} View)
                     </Button>
@@ -151,7 +151,7 @@ export const MyProfileView = () => {
 };
 
 export const ProfilePage = () => {
-    const session = useSessionStore(state => state.session);
+    const session = useSessionStore((state) => state.session);
 
     return session ? <MyProfileView /> : <LoginView />;
 };

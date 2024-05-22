@@ -20,7 +20,7 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
-    const setSession = useSessionStore(state => state.setSession);
+    const setSession = useSessionStore((state) => state.setSession);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
