@@ -1,5 +1,4 @@
-import { AppContext } from "@/App";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
@@ -21,6 +20,7 @@ import { Link } from "react-router-dom";
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle/ColorSchemeToggle";
 import { notifications } from "@mantine/notifications";
 import { changeUsername, fetchUsername } from "@/util/database";
+import { usePreferenceStore, useSessionStore } from "@/Stores";
 
 export const LoginView = () => {
     const { colorScheme } = useMantineColorScheme();
@@ -61,8 +61,9 @@ export const LoginView = () => {
 };
 
 export const MyProfileView = () => {
-    const { session, prefersMinimal, setPrefersMinimal } =
-        useContext(AppContext);
+    const { prefersMinimal, setPrefersMinimal } = usePreferenceStore();
+    const session = useSessionStore(state => state.session);
+
     if (!session)
         return (
             <Anchor to="/" component={Link}>
@@ -150,7 +151,7 @@ export const MyProfileView = () => {
 };
 
 export const ProfilePage = () => {
-    const { session } = useContext(AppContext);
+    const session = useSessionStore(state => state.session);
 
     return session ? <MyProfileView /> : <LoginView />;
 };

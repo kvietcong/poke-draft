@@ -1,6 +1,5 @@
-import supabase from "@/supabase";
 import classes from "@/App.module.css";
-import { useState, useEffect, useMemo, useContext } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { Text, Group, Center, Title, Stack, Button } from "@mantine/core";
 import { Loading } from "@/components/Loading/Loading";
@@ -13,11 +12,11 @@ import {
     PokemonFilterModal,
 } from "@/components/PokeView/View";
 import { getFirstScrollableParent } from "@/util/helpers";
-import { fetchPointRulesetInfo } from "@/util/database";
 import { getPokemon, searchPokemon, smogonOnClick } from "@/util/Pokemon";
-import { PointRulesetContext, PointRulesetProvider } from "@/Context";
-import { AppContext } from "@/App";
 import { usePokeFilter } from "@/util/hooks";
+import { usePointRulesetQuery } from "@/Queries";
+import { PointRulesetIDContext, usePointRulesetID } from "@/Context";
+import { usePreferenceStore } from "@/Stores";
 
 export const RulesetView = ({
     cardOnClick,
@@ -26,12 +25,10 @@ export const RulesetView = ({
     cardOnClick?: CardOnClick;
     extraRulePredicates?: ((p: Pokemon) => boolean)[];
 }) => {
-    const { dex, pointRulesetInfo, pokemonIDsByValue, valueByPokemonID } =
-        useContext(PointRulesetContext);
-    if (!pointRulesetInfo || !dex || !pokemonIDsByValue || !valueByPokemonID)
-        return;
+    const { dex, pointRulesetInfo, valueByPokemonID, pokemonIDsByValue } =
+        usePointRulesetQuery(usePointRulesetID()).data!;
 
-    const { prefersMinimal, setPrefersMinimal } = useContext(AppContext);
+    const { prefersMinimal, setPrefersMinimal } = usePreferenceStore();
 
     const pointRules = useMemo(() => {
         const pointRules = Object.entries(
@@ -170,30 +167,19 @@ const RulesetCentered = () => (
     </Center>
 );
 
-export const RulesetPage = () => (
-    <PointRulesetProvider>
-        <_RulesetPage />
-    </PointRulesetProvider>
-);
-
-export const _RulesetPage = () => {
+export const RulesetPage = () => {
     const { id } = useParams();
-    if (!id) return <>No ID provided</>;
+    if (!id) throw new Error("No point ruleset ID provided");
 
-    const { pointRulesetInfo, setPointRulesetInfo } =
-        useContext(PointRulesetContext);
+    const pointRulesetQuery = usePointRulesetQuery(id);
 
-    const refreshPointRulesetInfo = async () => {
-        const pointRulesetInfo = await fetchPointRulesetInfo(supabase, id);
-        if (!pointRulesetInfo) return;
-        setPointRulesetInfo(pointRulesetInfo);
-    };
+    if (pointRulesetQuery.isLoading) return <Loading />;
 
-    useEffect(() => {
-        refreshPointRulesetInfo();
-    }, [id]);
+    if (pointRulesetQuery.isError) throw new Error("Could load point ruleset");
 
-    if (![pointRulesetInfo].every((x) => x)) return <Loading />;
-
-    return id && <RulesetCentered />;
+    return (
+        <PointRulesetIDContext.Provider value={id}>
+            <RulesetCentered />
+        </PointRulesetIDContext.Provider>
+    );
 };

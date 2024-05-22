@@ -32,12 +32,14 @@
         "@supabase/auth-ui-shared": "^0.1.8",
         "@supabase/supabase-js": "^2.39.3",
         "@tabler/icons-react": "^2.46.0",
+        "@tanstack/react-query": "^5.37.1",
         "@vercel/speed-insights": "^1.0.7",
         "embla-carousel-react": "^7.1.0",
         "fuse.js": "^7.0.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
-        "react-router-dom": "^6.21.0"
+        "react-router-dom": "^6.21.0",
+        "zustand": "^4.5.2"
     },
     "devDependencies": {
         "@storybook/addon-essentials": "^7.6.6",

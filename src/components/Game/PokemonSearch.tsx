@@ -1,11 +1,12 @@
-import { PointRulesetContext } from "@/Context";
+import { useGameID, usePointRulesetID } from "@/Context";
 import { Pokemon } from "@/types";
 import { searchPokemon, smogonOnClick } from "@/util/Pokemon";
 import { Button, Stack, Autocomplete, Title } from "@mantine/core";
-import { ReactNode, useContext, useEffect, useMemo } from "react";
+import { ReactNode, useEffect, useMemo } from "react";
 import { getPointLabel } from "../Game/Game";
 import { useDebouncedState } from "@mantine/hooks";
 import { BaseStatDisplay, PokemonCard } from "../PokeView/View";
+import { usePointRulesetQuery } from "@/Queries";
 
 export const PokemonSearcher = ({
     onSelect,
@@ -19,7 +20,7 @@ export const PokemonSearcher = ({
     children?: ReactNode;
 }) => {
     const { dex, pointRulesetInfo, valueByPokemonID } =
-        useContext(PointRulesetContext);
+        usePointRulesetQuery(usePointRulesetID()).data!;
 
     const [internalSearch, setInternalSearch] = useDebouncedState(search, 150);
 

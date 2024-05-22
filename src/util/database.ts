@@ -8,6 +8,7 @@ import {
     Transaction,
 } from "@/types";
 import { searchPokemon } from "./Pokemon";
+import supabase from "@/supabase";
 export const profileTable = "profile";
 export const pointRulesetTable = "point_ruleset";
 export const pointRuleTable = "point_rule";
@@ -18,35 +19,31 @@ export const tradeTable = "game_trade";
 export const tradeConfirmationTable = "game_trade_confirmation";
 export const tradeTransactionTable = "game_trade_transaction";
 
-export const fetchGameInfo = async (supabase: SupabaseClient, game: string) => {
+export const fetchGameInfo = async (gameID: string) => {
+    console.log("Fetching game info", gameID);
     let { data, error } = await supabase
         .from(gameTable)
         .select(
             `id, name, owner, pointRuleset:point_ruleset, createdAt:created_at, gameStage:game_stage`
         )
-        .eq("id", game)
+        .eq("id", gameID)
         .single();
-    if (error) return console.error(error) as undefined;
-    if (!data) return console.log("No data received!") as undefined;
+    if (error) throw error;
+    if (!data) throw new Error("No data received!");
     return data as GameInfo;
 };
 
-export const fetchCurrentDrafter = async (
-    supabase: SupabaseClient,
-    game: string
-) => {
+export const fetchCurrentDrafter = async (gameID: string) => {
+    console.log("Fetching current drafter", gameID);
     const { data, error } = await supabase.rpc("get_current_drafter", {
-        game_id: game,
+        game_id: gameID,
     });
-    if (error) return console.error(error) as undefined;
-    if (!data) return console.log("No data received!") as undefined;
-    return data as string;
+    if (error) throw error;
+    return data as string | undefined;
 };
 
-export const fetchAllPlayerInfo = async (
-    supabase: SupabaseClient,
-    game: string
-) => {
+export const fetchAllPlayerInfo = async (gameID: string) => {
+    console.log("Fetching all player info", gameID);
     let { data, error } = await supabase
         .from(gamePlayerTable)
         .select(
@@ -57,8 +54,8 @@ export const fetchAllPlayerInfo = async (
                 selections:${gameSelectionTable}(id, pokemonID:pokemon_id)
             ), priority, max_points, max_team_size`
         )
-        .eq("game", game)
-        .eq("player.selections.game", game)
+        .eq("game", gameID)
+        .eq("player.selections.game", gameID)
         .returns<
             {
                 game: { ruleset: { generation: number } };
@@ -72,8 +69,8 @@ export const fetchAllPlayerInfo = async (
                 max_team_size: number;
             }[]
         >();
-    if (error) return console.error(error);
-    if (!data) return console.log("No data received!");
+    if (error) throw error;
+    if (!data) throw new Error("No data received!");
     const playerInfoByID = data.map((info) => {
         return {
             id: info.player.id,
@@ -98,10 +95,8 @@ export const fetchAllPlayerInfo = async (
     return playerInfoByID as PlayerInfo[];
 };
 
-export const fetchPointRulesetInfo = async (
-    supabase: SupabaseClient,
-    ruleset: string
-) => {
+export const fetchPointRulesetInfo = async (rulesetID: string) => {
+    console.log("fetching point ruleset info", rulesetID);
     let { data, error } = await supabase
         .from(pointRulesetTable)
         .select(
@@ -110,55 +105,18 @@ export const fetchPointRulesetInfo = async (
             isPrivate:is_private, createdAt:created_at,
             pointRules:${pointRuleTable}(pokemonID:pokemon_id, value)`
         )
-        .eq("id", ruleset)
+        .eq("id", rulesetID)
         .single();
-    if (error) return console.error(error);
-    if (!data) return console.log("No data received!");
+    if (error) throw error;
+    if (!data) throw Error("No data received!");
     const valueByPokemonID = {} as { [id: string]: number };
     for (const { pokemonID, value } of data.pointRules)
         valueByPokemonID[pokemonID] = value;
     return { ...data, valueByPokemonID } as PointRulesetInfo;
 };
 
-export const fetchPointRulesetInfoFromGameID = async (
-    supabase: SupabaseClient,
-    game: string
-) => {
-    let { data, error } = await supabase
-        .from(gameTable)
-        .select(
-            `
-            pointRuleset:point_ruleset(
-                id, name, owner, generation,
-                isPrivate:is_private, createdAt:created_at,
-                pointRules:${pointRuleTable}(pokemonID:pokemon_id, value)
-            )
-        `
-        )
-        .eq("id", game)
-        .returns<
-            {
-                pointRuleset: {
-                    id: string;
-                    name: string;
-                    owner: string;
-                    generation: number;
-                    isPrivate: boolean;
-                    createdAt: string;
-                    pointRules: { pokemonID: string; value: number }[];
-                };
-            }[]
-        >()
-        .single();
-    if (error) return console.error(error);
-    if (!data) return console.log("No data received!");
-    const valueByPokemonID = {} as { [id: string]: number };
-    for (const { pokemonID, value } of data.pointRuleset.pointRules)
-        valueByPokemonID[pokemonID] = value;
-    return { ...data.pointRuleset, valueByPokemonID } as PointRulesetInfo;
-};
-
 export const fetchRulesets = async (supabase: SupabaseClient) => {
+    console.log("fetching point rulesets");
     let { data, error } = await supabase
         .from(pointRulesetTable)
         .select("id, name");
@@ -224,17 +182,14 @@ type RawTrade = {
     }[];
 };
 
-export const fetchGameTrades = async (
-    supabase: SupabaseClient,
-    gameID: string
-) => {
+export const fetchGameTrades = async (gameID: string) => {
     const query = supabase
         .from(tradeTable)
         .select(tradeSelectQuery)
         .eq("game", gameID);
     const { data, error } = await query.returns<RawTrade[]>();
-    if (error) return console.error(error);
-    if (!data) return console.log("No data received!");
+    if (error) throw error;
+    if (!data) throw new Error("No game trade data received!");
     const trades = data.map<Trade>((rawTrade) => {
         return {
             id: rawTrade.id,
