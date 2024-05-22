@@ -27,28 +27,24 @@ import { notifications } from "@mantine/notifications";
 import { RulesetView } from "../Ruleset/Ruleset";
 import { smogonOnClick } from "@/util/Pokemon";
 import {
-    fetchGameInfo,
-    fetchAllPlayerInfo,
-    fetchPointRulesetInfoFromGameID,
     gamePlayerTable,
     gameSelectionTable,
-    fetchGameTrades,
     tradeConfirmationTable,
     tradeTable,
-    fetchCurrentDrafter,
     gameTable,
 } from "@/util/database";
 import { GameTradesAccordion, TradeCreator } from "./Trade";
-import {
-    GameInfoContext,
-    GamePlayersContext,
-    GameTradesContext,
-    PointRulesetContext,
-    WholeGameProvider,
-} from "@/Context";
+import { GameIDContext, PointRulesetIDContext, useGameID } from "@/Context";
 import { usePokeFilter } from "@/util/hooks";
 import { Dex } from "@pkmn/dex";
 import { PokemonSearcher } from "./PokemonSearch";
+import {
+    useCurrentDrafterQuery,
+    useGameInfoQuery,
+    useGamePlayersQuery,
+    useGameTradesQuery,
+    usePointRulesetQuery,
+} from "@/Queries";
 
 export const getPointLabel = (
     pokemon: Pokemon,
@@ -149,10 +145,13 @@ const getChosenPokemonPredicate =
 const Game = () => {
     const { session, prefersMinimal, setPrefersMinimal } =
         useContext(AppContext);
-    const { gameInfo, currentDrafter } = useContext(GameInfoContext);
-    const { playerInfoByID, allPlayerInfo } = useContext(GamePlayersContext);
-    const { dex, pointRulesetInfo, valueByPokemonID } =
-        useContext(PointRulesetContext);
+    const gameID = useGameID();
+    const currentDrafter = useCurrentDrafterQuery(gameID).data!;
+    const gameInfo = useGameInfoQuery(gameID).data!;
+    const { playerInfoByID, allPlayerInfo } = useGamePlayersQuery(gameID).data!;
+    const { dex, pointRulesetInfo, valueByPokemonID } = usePointRulesetQuery(
+        gameInfo.pointRuleset
+    ).data!;
 
     const pokemonByPlayerID = useMemo(() => {
         if (!allPlayerInfo || !dex) return;
@@ -201,7 +200,6 @@ const Game = () => {
     }, [playerInfoByID]);
 
     if (
-        !gameInfo ||
         !pointRulesetInfo ||
         !playerInfoByID ||
         !pokemonByPlayerID ||
@@ -515,66 +513,18 @@ const Game = () => {
 };
 
 export const GamePage = () => {
-    return (
-        <WholeGameProvider>
-            <_GamePage />
-        </WholeGameProvider>
-    );
-};
-
-export const _GamePage = () => {
     const { id } = useParams();
-    if (!id) return <>No ID provided</>;
+    if (!id) throw new Error("No Game ID Given!");
 
-    const { gameInfo, setGameInfo, setCurrentDrafter } =
-        useContext(GameInfoContext);
-    const { gameTrades, setGameTrades } = useContext(GameTradesContext);
-    const { playerInfoByID, allPlayerInfo, setAllPlayerInfo } =
-        useContext(GamePlayersContext);
-    const { pointRulesetInfo, setPointRulesetInfo } =
-        useContext(PointRulesetContext);
-
-    const refreshGameInfo = async () => {
-        const gameInfo = await fetchGameInfo(supabase, id);
-        if (!gameInfo) return;
-        setGameInfo(gameInfo);
-    };
-
-    const refreshAllPlayerInfo = async () => {
-        const allPlayerInfo = await fetchAllPlayerInfo(supabase, id);
-        if (!allPlayerInfo) return;
-        setAllPlayerInfo(allPlayerInfo);
-    };
-
-    const refreshPointRulesetInfo = async () => {
-        const pointRulesetInfo = await fetchPointRulesetInfoFromGameID(
-            supabase,
-            id
-        );
-        if (!pointRulesetInfo) return;
-        setPointRulesetInfo(pointRulesetInfo);
-    };
-
-    const refreshGameTrades = async () => {
-        const gameTrades = await fetchGameTrades(supabase, id);
-        if (!gameTrades) return;
-        setGameTrades(gameTrades);
-    };
-
-    const refreshCurrentDrafter = async () => {
-        const currentDrafter = await fetchCurrentDrafter(supabase, id);
-        setCurrentDrafter(currentDrafter);
-    };
-
-    useEffect;
+    const gameInfoQuery = useGameInfoQuery(id);
+    const currentDrafterQuery = useCurrentDrafterQuery(id);
+    const gameTradesQuery = useGameTradesQuery(id);
+    const gamePlayersQuery = useGamePlayersQuery(id);
+    const pointRulesetQuery = usePointRulesetQuery(
+        gameInfoQuery.data?.pointRuleset
+    );
 
     useEffect(() => {
-        refreshGameInfo();
-        refreshGameTrades();
-        refreshAllPlayerInfo();
-        refreshCurrentDrafter();
-        refreshPointRulesetInfo();
-
         const update = supabase
             .channel("game-update")
             .on(
@@ -587,8 +537,8 @@ export const _GamePage = () => {
                 },
                 (payload) => {
                     console.log("Change received for game!", payload);
-                    refreshGameInfo();
-                    refreshCurrentDrafter();
+                    gameInfoQuery.refetch();
+                    currentDrafterQuery.refetch();
                     notifications.show({
                         title: "Update",
                         message: "A game update was triggered",
@@ -608,8 +558,8 @@ export const _GamePage = () => {
                 },
                 (payload) => {
                     console.log("Change received for selections!", payload);
-                    refreshAllPlayerInfo();
-                    refreshCurrentDrafter();
+                    gamePlayersQuery.refetch();
+                    currentDrafterQuery.refetch();
                     notifications.show({
                         title: "Update",
                         message: "A team update was triggered",
@@ -629,8 +579,8 @@ export const _GamePage = () => {
                 },
                 (payload) => {
                     console.log("Change received for players!", payload);
-                    refreshAllPlayerInfo();
-                    refreshCurrentDrafter();
+                    gamePlayersQuery.refetch();
+                    currentDrafterQuery.refetch();
                     notifications.show({
                         title: "Update",
                         message: "A player update was triggered",
@@ -645,6 +595,8 @@ export const _GamePage = () => {
         };
     }, [id]);
 
+    const gameTrades = gameTradesQuery.data;
+    const playerInfoByID = gamePlayersQuery.data?.allPlayerInfo;
     useEffect(() => {
         if (!gameTrades || !playerInfoByID) return;
 
@@ -660,7 +612,7 @@ export const _GamePage = () => {
                 },
                 (payload) => {
                     console.log("New Trade Confirmation Received!", payload);
-                    refreshGameTrades();
+                    gameTradesQuery.refetch();
                     const playerName =
                         playerInfoByID[(payload.new as any).participant].name;
                     notifications.show({
@@ -679,7 +631,7 @@ export const _GamePage = () => {
                 },
                 (payload) => {
                     console.log("Trade Update Received!", payload);
-                    refreshGameTrades();
+                    gameTradesQuery.refetch();
                     const action =
                         payload.eventType === "INSERT"
                             ? "created"
@@ -697,8 +649,32 @@ export const _GamePage = () => {
         };
     }, [gameTrades, playerInfoByID]);
 
-    if (!(gameInfo && allPlayerInfo && pointRulesetInfo && gameTrades))
+    if (
+        pointRulesetQuery.isPending ||
+        !pointRulesetQuery.data ||
+        gamePlayersQuery.isPending ||
+        gameInfoQuery.isPending ||
+        currentDrafterQuery.isLoading ||
+        gameTradesQuery.isLoading
+    )
         return <Loading />;
 
-    return <Game />;
+    if (
+        gameInfoQuery.isError ||
+        currentDrafterQuery.isError ||
+        gameTradesQuery.isError ||
+        gamePlayersQuery.isError ||
+        pointRulesetQuery.isError
+    )
+        throw new Error("Failed to fetch data");
+
+    return (
+        <GameIDContext.Provider value={id}>
+            <PointRulesetIDContext.Provider
+                value={gameInfoQuery.data.pointRuleset}
+            >
+                <Game />
+            </PointRulesetIDContext.Provider>
+        </GameIDContext.Provider>
+    );
 };

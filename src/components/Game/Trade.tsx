@@ -25,13 +25,14 @@ import { searchPokemon } from "@/util/Pokemon";
 import { notifications } from "@mantine/notifications";
 import { AppContext } from "@/App";
 import { getPointLabel } from "./Game";
-import {
-    GameInfoContext,
-    GamePlayersContext,
-    GameTradesContext,
-    PointRulesetContext,
-} from "@/Context";
+import { useGameID, usePointRulesetID } from "@/Context";
 import { Participant, Pokemon } from "@/types";
+import {
+    useGameInfoQuery,
+    useGamePlayersQuery,
+    useGameTradesQuery,
+    usePointRulesetQuery,
+} from "@/Queries";
 
 const TradeLine = ({
     pokemon,
@@ -64,13 +65,13 @@ const Accepters = ({ confirmations }: { confirmations: Participant[] }) => (
 
 export const GameTradesAccordion = () => {
     const { session } = useContext(AppContext);
-    const { gameInfo } = useContext(GameInfoContext);
-    const { gameTrades } = useContext(GameTradesContext);
-    const { playerInfoByID } = useContext(GamePlayersContext);
-    const { valueByPokemonID } = useContext(PointRulesetContext);
+    const gameID = useGameID();
+    const gameTrades = useGameTradesQuery(gameID).data!;
+    const { playerInfoByID } = useGamePlayersQuery(gameID).data!;
+    const { valueByPokemonID } =
+        usePointRulesetQuery(usePointRulesetID()).data!;
 
-    if (!gameInfo || !playerInfoByID || !valueByPokemonID || !gameTrades)
-        return;
+    if (!playerInfoByID || !valueByPokemonID) return;
 
     const tradeInfo = useMemo(() => {
         const participantsByTrade = gameTrades.reduce<{
@@ -263,17 +264,13 @@ export const GameTradesAccordion = () => {
 
 export const TradeCreator = () => {
     const { session } = useContext(AppContext);
-    const { gameInfo } = useContext(GameInfoContext);
-    const { playerInfoByID, allPlayerInfo } = useContext(GamePlayersContext);
-    const { valueByPokemonID } = useContext(PointRulesetContext);
+    const gameID = useGameID();
+    const gameInfo = useGameInfoQuery(gameID).data!;
+    const { playerInfoByID, allPlayerInfo } = useGamePlayersQuery(gameID).data!;
+    const { valueByPokemonID } =
+        usePointRulesetQuery(usePointRulesetID()).data!;
 
-    if (
-        !gameInfo ||
-        !playerInfoByID ||
-        !valueByPokemonID ||
-        !session ||
-        !allPlayerInfo
-    )
+    if (!playerInfoByID || !valueByPokemonID || !session || !allPlayerInfo)
         return;
 
     type TransactionInfo = {

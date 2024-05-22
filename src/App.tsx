@@ -10,6 +10,7 @@ import React, { createContext, useEffect, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import supabase from "./supabase";
 import { getLocalPreference, setLocalPreference } from "./util/helpers";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 export type AppContext = {
     session: Session | null;
@@ -22,6 +23,14 @@ export const AppContext = createContext<AppContext>({
     setSession: () => {},
     prefersMinimal: false,
     setPrefersMinimal: () => {},
+});
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            staleTime: 5 * 60 * 1000,
+        },
+    },
 });
 
 export default function App() {
@@ -62,11 +71,13 @@ export default function App() {
                 setPrefersMinimal: setPrefersMinimalWrapper,
             }}
         >
-            <MantineProvider defaultColorScheme="auto" theme={theme}>
-                <Notifications autoClose={1800} />
-                <Router />
-                <SpeedInsights />
-            </MantineProvider>
+            <QueryClientProvider client={queryClient}>
+                <MantineProvider defaultColorScheme="auto" theme={theme}>
+                    <Notifications autoClose={1800} />
+                    <Router />
+                    <SpeedInsights />
+                </MantineProvider>
+            </QueryClientProvider>
         </AppContext.Provider>
     );
 }
