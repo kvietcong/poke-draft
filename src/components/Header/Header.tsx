@@ -7,7 +7,7 @@ import { profileTable } from "@/util/database";
 import { useSessionStore } from "@/Stores";
 
 export const Header = () => {
-    const session = useSessionStore(state => state.session);
+    const session = useSessionStore((state) => state.session);
     const { pathname } = useLocation();
     const [links, setLinks] = useState<{ link: string; label: string }[]>([]);
     const [displayName, setDisplayName] = useState<string | null>(null);

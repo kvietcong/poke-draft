@@ -1,5 +1,5 @@
 import classes from "@/App.module.css";
-import { useState, useMemo } from "react";
+import { useState, useMemo, MouseEventHandler } from "react";
 import { useParams } from "react-router-dom";
 import { Text, Group, Center, Title, Stack, Button } from "@mantine/core";
 import { Loading } from "@/components/Loading/Loading";
@@ -28,7 +28,7 @@ export const RulesetView = ({
     const { dex, pointRulesetInfo, valueByPokemonID, pokemonIDsByValue } =
         usePointRulesetQuery(usePointRulesetID()).data!;
 
-    const { prefersMinimal, setPrefersMinimal } = usePreferenceStore();
+    const { prefersMinimal, togglePrefersMinimal } = usePreferenceStore();
 
     const pointRules = useMemo(() => {
         const pointRules = Object.entries(
@@ -90,6 +90,30 @@ export const RulesetView = ({
         valueByPokemonID,
     ]);
 
+    const toggleSections = () => {
+        setOpen(
+            open.length
+                ? []
+                : Object.values(pointRules)
+                      .map((x) => x[0])
+                      .filter((x) => x != "0")
+        );
+    };
+
+    const scrollUpOrDown: MouseEventHandler<HTMLButtonElement> = (e) => {
+        const scrollableParent =
+            getFirstScrollableParent(e.currentTarget) ??
+            window.document.documentElement;
+        const scrollTop =
+            scrollableParent.scrollTop > 100
+                ? 0
+                : scrollableParent.scrollHeight;
+        scrollableParent.scrollTo({
+            top: scrollTop,
+            behavior: "smooth",
+        });
+    };
+
     return (
         <Stack>
             <Title className={classes.title} ta="center">
@@ -120,37 +144,11 @@ export const RulesetView = ({
                 cardOnClick={cardOnClick ?? defaultCardOnClick}
             />
             <Group pos="sticky" left={25} bottom={20}>
-                <Button
-                    onClick={() =>
-                        setOpen(
-                            open.length
-                                ? []
-                                : Object.values(pointRules)
-                                      .map((x) => x[0])
-                                      .filter((x) => x != "0")
-                        )
-                    }
-                >
+                <Button onClick={toggleSections}>
                     {open.length ? "Close All" : "Open All"}
                 </Button>
-                <Button
-                    onClick={(e) => {
-                        const scrollableParent =
-                            getFirstScrollableParent(e.currentTarget) ??
-                            window.document.documentElement;
-                        const scrollTop =
-                            scrollableParent.scrollTop > 100
-                                ? 0
-                                : scrollableParent.scrollHeight;
-                        scrollableParent.scrollTo({
-                            top: scrollTop,
-                            behavior: "smooth",
-                        });
-                    }}
-                >
-                    Scroll
-                </Button>
-                <Button onClick={() => setPrefersMinimal(!prefersMinimal)}>
+                <Button onClick={scrollUpOrDown}>Scroll</Button>
+                <Button onClick={togglePrefersMinimal}>
                     Toggle View ({prefersMinimal ? "Minimal" : "Full"})
                 </Button>
                 <Button onClick={filterModalHandlers.toggle}>Filters</Button>
