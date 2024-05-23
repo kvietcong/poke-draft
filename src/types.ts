@@ -30,6 +30,7 @@ export enum GameStage {
     Joining = 0,
     Drafting,
     Battling,
+    Finished,
 }
 export type GameInfo = {
     id: string;
