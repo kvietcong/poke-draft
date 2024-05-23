@@ -1,9 +1,8 @@
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
-import { MantineProvider } from "@mantine/core";
+import { MantineProvider, createTheme } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { Router } from "./Router";
-import { theme } from "./theme";
 
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import supabase from "./supabase";
@@ -19,6 +18,10 @@ const queryClient = new QueryClient({
         },
     },
 });
+
+const theme = createTheme({
+    fontFamily: "\"Pixelify Sans\", sans-serif",
+})
 
 export default function App() {
     const setSession = useSessionStore((state) => state.setSession);
