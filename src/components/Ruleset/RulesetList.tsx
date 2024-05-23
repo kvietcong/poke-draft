@@ -12,17 +12,17 @@ import {
     Anchor,
 } from "@mantine/core";
 import { Link } from "react-router-dom";
-import { fetchRulesets } from "@/util/database";
+import { usePointRulesetsQuery } from "@/Queries";
+import { Loading } from "../Loading/Loading";
 
 export const RulesetListView = () => {
-    const [rulesets, setRulesets] = useState<[string, string][]>([]);
+    const pointRulesetsQuery = usePointRulesetsQuery();
 
-    useEffect(() => {
-        (async () => {
-            const rulesets = await fetchRulesets(supabase);
-            if (rulesets) setRulesets(rulesets);
-        })();
-    }, []);
+    if (pointRulesetsQuery.isPending) return <Loading />;
+    if (pointRulesetsQuery.isError)
+        throw Error("Couldn't fetch point rulesets");
+
+    const rulesets = pointRulesetsQuery.data;
 
     return (
         <Center>

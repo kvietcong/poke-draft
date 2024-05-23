@@ -2,7 +2,7 @@ import { Pokemon } from "@/types";
 import { ModdedDex, StatID } from "@pkmn/dex";
 import Fuse from "fuse.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchMovesByPokemon } from "./Pokemon";
+import { fetchMovesByPokemon } from "./pokemon";
 
 const statAbbreviations: Map<string, StatID> = new Map([
     ["hp", "hp"],

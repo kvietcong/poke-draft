@@ -21,9 +21,8 @@ import {
     PokemonAccordion,
     PokemonPill,
 } from "../PokeView/View";
-import { searchPokemon } from "@/util/Pokemon";
+import { getPointLabel, searchPokemon } from "@/util/pokemon";
 import { notifications } from "@mantine/notifications";
-import { getPointLabel } from "./Game";
 import { useGameID, usePointRulesetID } from "@/Context";
 import { Participant, Pokemon } from "@/types";
 import {
