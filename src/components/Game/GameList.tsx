@@ -1,5 +1,5 @@
 import classes from "@/App.module.css";
-import { useGamesQuery } from "@/Queries";
+import { useGamesQuery } from "@/queries";
 import {
     Card,
     Center,

@@ -1,8 +1,8 @@
 import { Pokemon } from "@/types";
 import { ModdedDex, StatID } from "@pkmn/dex";
 import Fuse from "fuse.js";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchMovesByPokemon } from "./pokemon";
+import { useCallback, useMemo, useState } from "react";
+import { useMovesByPokemonQuery } from "@/queries";
 
 const statAbbreviations: Map<string, StatID> = new Map([
     ["hp", "hp"],
@@ -47,15 +47,8 @@ export const usePokeFilter = (dex: ModdedDex) => {
         [setStats]
     );
 
-    const [movesByPokemon, setMovesByPokemon] = useState<{
-        [id: string]: string[];
-    }>({});
-
-    useEffect(() => {
-        (async () => {
-            setMovesByPokemon(await fetchMovesByPokemon(dex));
-        })();
-    }, [dex]);
+    const movesByPokemonQuery = useMovesByPokemonQuery(dex);
+    const movesByPokemon = movesByPokemonQuery.data;
 
     const nameFuzzySearcher = useMemo(() => {
         const result = new Fuse(

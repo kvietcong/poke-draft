@@ -4,7 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import supabase from "@/supabase";
 import { profileTable } from "@/util/database";
-import { useSessionStore } from "@/Stores";
+import { useSessionStore } from "@/stores";
 
 export const Header = () => {
     const session = useSessionStore((state) => state.session);

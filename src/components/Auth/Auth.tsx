@@ -19,8 +19,8 @@ import { Link } from "react-router-dom";
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle/ColorSchemeToggle";
 import { notifications } from "@mantine/notifications";
 import { changeUsername } from "@/util/database";
-import { usePreferenceStore, useSessionStore } from "@/Stores";
-import { useProfileQuery } from "@/Queries";
+import { usePreferenceStore, useSessionStore } from "@/stores";
+import { useProfileQuery } from "@/queries";
 
 export const LoginView = () => {
     const { colorScheme } = useMantineColorScheme();

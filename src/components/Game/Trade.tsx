@@ -30,8 +30,8 @@ import {
     useGamePlayersQuery,
     useGameTradesQuery,
     usePointRulesetQuery,
-} from "@/Queries";
-import { useSessionStore } from "@/Stores";
+} from "@/queries";
+import { useSessionStore } from "@/stores";
 
 const TradeLine = ({
     pokemon,

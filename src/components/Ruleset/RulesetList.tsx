@@ -12,7 +12,7 @@ import {
     Anchor,
 } from "@mantine/core";
 import { Link } from "react-router-dom";
-import { usePointRulesetsQuery } from "@/Queries";
+import { usePointRulesetsQuery } from "@/queries";
 import { Loading } from "../Loading/Loading";
 
 export const RulesetListView = () => {

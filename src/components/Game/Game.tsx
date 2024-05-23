@@ -41,8 +41,8 @@ import {
     useGamePlayersQuery,
     useGameTradesQuery,
     usePointRulesetQuery,
-} from "@/Queries";
-import { usePreferenceStore, useSessionStore } from "@/Stores";
+} from "@/queries";
+import { usePreferenceStore, useSessionStore } from "@/stores";
 import {
     beginDrafting,
     concludeDrafting,

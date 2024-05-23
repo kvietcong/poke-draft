@@ -14,9 +14,9 @@ import {
 import { getFirstScrollableParent } from "@/util/helpers";
 import { getPokemon, searchPokemon, smogonOnClick } from "@/util/pokemon";
 import { usePokeFilter } from "@/util/hooks";
-import { usePointRulesetQuery } from "@/Queries";
+import { usePointRulesetQuery } from "@/queries";
 import { PointRulesetIDContext, usePointRulesetID } from "@/Context";
-import { usePreferenceStore } from "@/Stores";
+import { usePreferenceStore } from "@/stores";
 
 export const RulesetView = ({
     cardOnClick,

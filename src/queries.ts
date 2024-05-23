@@ -10,7 +10,8 @@ import {
     fetchRulesets,
 } from "./util/database";
 import { PlayerInfo } from "./types";
-import { Dex } from "@pkmn/dex";
+import { Dex, ModdedDex } from "@pkmn/dex";
+import { fetchMovesByPokemon } from "./util/pokemon";
 
 export const useProfileQuery = (userID?: string) => {
     const query = useQuery({
@@ -134,6 +135,19 @@ export const usePointRulesetQuery = (pointRulesetID?: string) => {
         },
         enabled: !!pointRulesetID,
         staleTime: 6 * 60 * 60 * 1000,
+    });
+    return query;
+};
+
+export const useMovesByPokemonQuery = (dex?: ModdedDex) => {
+    const query = useQuery({
+        queryKey: ["movesByPokemon", dex?.modid],
+        queryFn: async () => {
+            const movesByPokemon = await fetchMovesByPokemon(dex!);
+            return movesByPokemon;
+        },
+        enabled: !!dex,
+        initialData: {},
     });
     return query;
 };
