@@ -1,7 +1,6 @@
 import classes from "./View.module.css";
 import appClasses from "@/App.module.css";
 import { Dispatch, ReactNode, SetStateAction, useMemo } from "react";
-import { colorByType, getTypeColor } from "@/util/PokemonColors";
 import { getStatColor } from "@/util/StatColors";
 import {
     Card,
@@ -27,62 +26,18 @@ import {
 import { Pokemon } from "@/types";
 import { useClipboard, useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { Dex, ModdedDex, TypeName } from "@pkmn/dex";
-import { smogonOnClick } from "@/util/Pokemon";
+import { Dex, ModdedDex } from "@pkmn/dex";
+import {
+    colorByType,
+    getTypeColor,
+    getTypesByDamageMultiplier,
+    smogonOnClick,
+} from "@/util/pokemon";
 import { PokeFilter } from "@/util/hooks";
 
 export type CardOnClick = (pokemon: Pokemon, event: React.MouseEvent) => void;
 const defaultCardOnClick = (pokemon: Pokemon) =>
     smogonOnClick(pokemon, pokemon.data.gen);
-
-const getTypesByDamageMultiplier = (
-    types: [TypeName] | [TypeName, TypeName]
-) => {
-    const manyDamageTypeByType = types.map(
-        (type) => Dex.types.get(type).damageTaken
-    );
-
-    const manyDamageMultiplierByType = [];
-    for (const damageTypeByType of manyDamageTypeByType) {
-        const damageMultiplierByType: { [type: string]: number } = {};
-        for (const [type, damageType] of Object.entries(damageTypeByType)) {
-            let damageMultiplier = 1;
-            if (damageType === 3) damageMultiplier = 0;
-            else if (damageType === 2) damageMultiplier = 0.5;
-            else if (damageType === 1) damageMultiplier = 2;
-            damageMultiplierByType[type] = damageMultiplier;
-        }
-        manyDamageMultiplierByType.push(damageMultiplierByType);
-    }
-
-    const allTypes = Dex.types.all().map((type) => type.name);
-    const finalDamageMultiplierByType = allTypes.reduce<{
-        [type: string]: number;
-    }>((acc, next) => {
-        acc[next] = 1;
-        return acc;
-    }, {});
-
-    for (const damageMultiplierByType of manyDamageMultiplierByType) {
-        for (const [type, damageMultiplier] of Object.entries(
-            damageMultiplierByType
-        )) {
-            finalDamageMultiplierByType[type] =
-                finalDamageMultiplierByType[type] * damageMultiplier;
-        }
-    }
-
-    const result: { [type: string]: string[] } = {};
-    for (const [type, damageMultiplier] of Object.entries(
-        finalDamageMultiplierByType
-    )) {
-        if (damageMultiplier === 1) continue;
-        if (damageMultiplier in result) result[damageMultiplier].push(type);
-        else result[damageMultiplier] = [type];
-    }
-
-    return result;
-};
 
 export const BasicStatDisplay = ({ pokemon }: { pokemon: Pokemon }) => {
     const typeBadges = pokemon.data.types.map((type) => (
@@ -379,7 +334,7 @@ export const PokemonAccordion = ({
 };
 
 type DisclosureHandlers = ReturnType<typeof useDisclosure>[1];
-export const PokemonFilterModal = ({
+export const RootPokemonFilterModal = ({
     pokeFilter,
     showFilterModal,
     filterModalHandlers,

@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-
+import { useState } from "react";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import supabase from "@/supabase";
@@ -19,8 +18,9 @@ import classes from "@/App.module.css";
 import { Link } from "react-router-dom";
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle/ColorSchemeToggle";
 import { notifications } from "@mantine/notifications";
-import { changeUsername, fetchUsername } from "@/util/database";
+import { changeUsername } from "@/util/database";
 import { usePreferenceStore, useSessionStore } from "@/Stores";
+import { useProfileQuery } from "@/Queries";
 
 export const LoginView = () => {
     const { colorScheme } = useMantineColorScheme();
@@ -63,17 +63,20 @@ export const LoginView = () => {
 export const MyProfileView = () => {
     const { prefersMinimal, togglePrefersMinimal } = usePreferenceStore();
     const session = useSessionStore((state) => state.session);
+    const profileQuery = useProfileQuery(session?.user.id);
+    const [newUsername, setNewUsername] = useState("");
 
-    if (!session)
+    if (profileQuery.isError) throw new Error("Couldn't get profile");
+
+    if (!session || profileQuery.isPending)
         return (
             <Anchor to="/" component={Link}>
                 Go Home
             </Anchor>
         );
 
-    const [username, setUsername] = useState("There!");
-
-    const [newUsername, setNewUsername] = useState("");
+    const profile = profileQuery.data;
+    const username = profile.name;
     const changeName = async () => {
         const newUsernameClean = newUsername.trim();
         if (!newUsernameClean || newUsernameClean.length < 2)
@@ -82,22 +85,15 @@ export const MyProfileView = () => {
                 title: "Invalid Username",
                 message: `You can't use "${newUsernameClean}" as your username`,
             });
-        const error = await changeUsername(supabase, session, newUsernameClean);
+        const error = await changeUsername(profile.id, newUsernameClean);
         if (error)
             return notifications.show({
                 color: "red",
                 title: "Couldn't update username",
                 message: error.message,
             });
-        setUsername(newUsernameClean);
+        profileQuery.refetch();
     };
-
-    useEffect(() => {
-        (async () => {
-            const username = await fetchUsername(supabase, session);
-            setUsername(username);
-        })();
-    }, [session]);
 
     return (
         <>

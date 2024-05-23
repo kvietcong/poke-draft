@@ -54,3 +54,8 @@ export type Trade = {
     confirmations: Participant[];
     transactions: Transaction[];
 };
+
+export type Profile = {
+    id: string;
+    name: string;
+};

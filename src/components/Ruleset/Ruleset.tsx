@@ -9,10 +9,10 @@ import {
     AccordionSectionData,
     CardOnClick,
     PokemonAccordion,
-    PokemonFilterModal,
+    RootPokemonFilterModal,
 } from "@/components/PokeView/View";
 import { getFirstScrollableParent } from "@/util/helpers";
-import { getPokemon, searchPokemon, smogonOnClick } from "@/util/Pokemon";
+import { getPokemon, searchPokemon, smogonOnClick } from "@/util/pokemon";
 import { usePokeFilter } from "@/util/hooks";
 import { usePointRulesetQuery } from "@/Queries";
 import { PointRulesetIDContext, usePointRulesetID } from "@/Context";
@@ -127,7 +127,7 @@ export const RulesetView = ({
                     {pointRulesetInfo.name}
                 </Text>
             </Title>
-            <PokemonFilterModal
+            <RootPokemonFilterModal
                 pokeFilter={pokeFilter}
                 dex={dex}
                 showFilterModal={showFilterModal}

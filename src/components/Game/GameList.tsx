@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react";
 import classes from "@/App.module.css";
-import supabase from "@/supabase";
-
+import { useGamesQuery } from "@/Queries";
 import {
     Card,
     Center,
@@ -12,22 +10,15 @@ import {
     Anchor,
 } from "@mantine/core";
 import { Link } from "react-router-dom";
-import { gameTable } from "@/util/database";
+import { Loading } from "../Loading/Loading";
 
 export const GameListView = () => {
-    const [games, setGames] = useState<[string, string][]>([]);
+    const gamesQuery = useGamesQuery();
 
-    const fetchGames = async () => {
-        let { data, error } = await supabase.from(gameTable).select(`id, name`);
-        if (error) return console.error(error);
-        if (!data) return console.log("No data received!");
-        const newGames = data.map<[string, string]>((x) => [x.id, x.name]);
-        setGames(newGames);
-    };
+    if (gamesQuery.isPending) return <Loading />;
+    if (gamesQuery.isError) throw Error("Couldn't fetch games");
 
-    useEffect(() => {
-        fetchGames();
-    }, []);
+    const games = gamesQuery.data;
 
     return (
         <Center>

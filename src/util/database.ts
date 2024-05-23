@@ -4,10 +4,11 @@ import {
     PlayerInfo,
     PointRulesetInfo,
     Pokemon,
+    Profile,
     Trade,
     Transaction,
 } from "@/types";
-import { searchPokemon } from "./Pokemon";
+import { searchPokemon } from "./pokemon";
 import supabase from "@/supabase";
 export const profileTable = "profile";
 export const pointRulesetTable = "point_ruleset";
@@ -115,40 +116,43 @@ export const fetchPointRulesetInfo = async (rulesetID: string) => {
     return { ...data, valueByPokemonID } as PointRulesetInfo;
 };
 
-export const fetchRulesets = async (supabase: SupabaseClient) => {
+export const fetchRulesets = async () => {
     console.log("fetching point rulesets");
     let { data, error } = await supabase
         .from(pointRulesetTable)
         .select("id, name");
-    if (error) return console.error(error);
-    if (!data) return console.log("No data received!");
+    if (error) throw error;
+    if (!data) throw Error("No data received!");
     const rulesets = data.map<[string, string]>((val) => [val.id, val.name]);
     return rulesets;
 };
 
-export const fetchUsername = async (
-    supabase: SupabaseClient,
-    session: Session
-) => {
-    const { data, error } = await supabase
-        .from(profileTable)
-        .select("display_name")
-        .eq("id", session.user.id)
-        .single();
-    if (error) return console.error(error);
-    if (!data) return console.log("No data received!");
-    return data.display_name;
+export const fetchGames = async () => {
+    console.log("fetching games");
+    let { data, error } = await supabase.from(gameTable).select(`id, name`);
+    if (error) throw error;
+    if (!data) throw Error("No data received!");
+    const games = data.map<[string, string]>((x) => [x.id, x.name]);
+    return games;
 };
 
-export const changeUsername = async (
-    supabase: SupabaseClient,
-    session: Session,
-    newUsername: string
-) => {
+export const fetchProfile = async (userID: string) => {
+    console.log("fetching user profile", userID);
+    const { data, error } = await supabase
+        .from(profileTable)
+        .select("id, name:display_name")
+        .eq("id", userID)
+        .single();
+    if (error) throw error;
+    if (!data) throw Error("No data received!");
+    return data as Profile;
+};
+
+export const changeUsername = async (userID: string, newUsername: string) => {
     const { error } = await supabase
         .from(profileTable)
         .update({ display_name: newUsername })
-        .eq("id", session.user.id);
+        .eq("id", userID);
     return error;
 };
 

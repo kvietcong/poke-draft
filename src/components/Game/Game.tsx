@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import supabase from "@/supabase";
 import {
@@ -13,18 +13,17 @@ import {
     MultiSelect,
 } from "@mantine/core";
 import classes from "@/App.module.css";
-import { GameStage, Pokemon, ValueByPokemonID } from "@/types";
+import { GameStage, Pokemon } from "@/types";
 import {
     AccordionSectionData,
     CardOnClick,
     PokemonAccordion,
-    PokemonFilterModal,
+    RootPokemonFilterModal,
 } from "@/components/PokeView/View";
 import { Loading } from "../Loading/Loading";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { RulesetView } from "../Ruleset/Ruleset";
-import { smogonOnClick } from "@/util/Pokemon";
+import { getPointLabel, smogonOnClick } from "@/util/pokemon";
 import {
     gamePlayerTable,
     gameSelectionTable,
@@ -44,88 +43,13 @@ import {
     usePointRulesetQuery,
 } from "@/Queries";
 import { usePreferenceStore, useSessionStore } from "@/Stores";
-
-export const getPointLabel = (
-    pokemon: Pokemon,
-    valueByPokemonID: ValueByPokemonID
-): string => {
-    let pointLabel = "1 Point";
-    if (pokemon.data.id in valueByPokemonID) {
-        const value = valueByPokemonID[pokemon.data.id];
-        pointLabel = value === 0 ? "Banned" : `${value} Points`;
-    }
-    return pointLabel;
-};
-
-const getPointTotal = (
-    pokemon: Pokemon[],
-    valueByPokemonID: ValueByPokemonID
-): number => {
-    return pokemon.reduce((acc, next) => {
-        return acc + (valueByPokemonID[next.data.id] ?? 1);
-    }, 0);
-};
-
-const joinGame = async (gameID: string, userID: string) => {
-    const { error } = await supabase.from(gamePlayerTable).insert([
-        {
-            game: gameID,
-            player: userID,
-        },
-    ]);
-    if (error)
-        return notifications.show({
-            color: "red",
-            title: "Couldn't join game",
-            message: `${error.message}`,
-        });
-    notifications.show({
-        title: "Game Joined",
-        message: "Joined successfully",
-    });
-};
-
-const beginDrafting = async (gameID: string) => {
-    const { error } = await supabase
-        .from(gameTable)
-        .update([
-            {
-                game_stage: GameStage.Drafting,
-            },
-        ])
-        .eq("id", gameID);
-    if (error)
-        return notifications.show({
-            color: "red",
-            title: "Couldn't begin drafting",
-            message: `${error.message}`,
-        });
-    notifications.show({
-        title: "Drafting begins",
-        message: "Drafting has commenced",
-    });
-};
-
-const concludeDrafting = async (gameID: string) => {
-    const { error } = await supabase
-        .from(gameTable)
-        .update([
-            {
-                game_stage: GameStage.Battling,
-            },
-        ])
-        .eq("id", gameID);
-    if (error)
-        return notifications.show({
-            color: "red",
-            title: "Couldn't conclude drafting",
-            message: `${error.message}`,
-        });
-    notifications.show({
-        title: "Drafting concluded",
-        message: "Battling has commenced",
-    });
-};
+import {
+    beginDrafting,
+    concludeDrafting,
+    joinGame,
+    getPlayerIDToLabel,
+} from "./util";
+import { RulesetView } from "../Ruleset/Ruleset";
 
 const getChosenPokemonPredicate =
     (pokemonByPlayerID: { [playerID: string]: Pokemon[] }) =>
@@ -162,29 +86,32 @@ const Game = () => {
             },
             {}
         );
-    }, [allPlayerInfo, dex]);
+    }, [allPlayerInfo]);
 
-    const [isRulesetOpened, { open: showRuleset, close: hideRuleset }] =
-        useDisclosure(false);
-    const [isTradingOpened, { open: showTrading, close: hideTrading }] =
-        useDisclosure(false);
+    const [isRulesetModal, rulesetModalHandlers] = useDisclosure(false);
+    const [isTradingModal, tradingModalHandlers] = useDisclosure(false);
+    const [isFilterModal, filterModalHandlers] = useDisclosure(false);
 
-    const [open, setOpen] = useState<string[]>([]);
-
-    const [search, setSearch] = useState("");
-    const rulesetCardOnClick: CardOnClick = (pokemon) => {
-        setSearch(pokemon.data.id);
-        hideRuleset();
-        window.document
-            .getElementById("make-selection")
-            ?.scrollIntoView({ behavior: "smooth" });
-    };
-
-    const [showFilterModal, filterModalHandlers] = useDisclosure(false);
-    const [shownPlayers, setShownPlayers] = useState<string[]>([]);
     const pokeFilter = usePokeFilter(dex);
+    const [search, setSearch] = useState("");
+    const [open, setOpen] = useState<string[]>([]);
+    const [shownPlayers, setShownPlayers] = useState<string[]>([]);
 
-    const showAllPlayers = () => setShownPlayers(Object.keys(playerInfoByID));
+    const rulesetCardOnClick: CardOnClick = useCallback(
+        (pokemon) => {
+            setSearch(pokemon.data.id);
+            rulesetModalHandlers.close();
+            window.document
+                .getElementById("make-selection")
+                ?.scrollIntoView({ behavior: "smooth" });
+        },
+        [setSearch, rulesetModalHandlers]
+    );
+
+    const showAllPlayers = useCallback(
+        () => setShownPlayers(Object.keys(playerInfoByID)),
+        [playerInfoByID]
+    );
 
     useEffect(() => {
         showAllPlayers();
@@ -198,60 +125,15 @@ const Game = () => {
     const isJoining = gameInfo.gameStage === GameStage.Joining;
     const isDrafting = gameInfo.gameStage === GameStage.Drafting;
     const isBattling = gameInfo.gameStage === GameStage.Battling;
-    const isDraftOngoing = isDrafting && currentDrafter;
-    const isReadyToBattle = isDrafting && !currentDrafter;
+    const isDraftOngoing = !!isDrafting && !!currentDrafter;
+    const isReadyToBattle = !!isDrafting && !currentDrafter;
 
-    const selectPokemon =
-        session && session.user.id === currentDrafter
-            ? async (pokemon: Pokemon) => {
-                  const value = valueByPokemonID[pokemon.data.id];
-                  if (value === 0)
-                      return notifications.show({
-                          color: "red",
-                          title: "Banned Pokemon",
-                          message: `${pokemon.data.name} is a banned Pokemon!`,
-                      });
-
-                  const currentPointTotal = getPointTotal(
-                      Object.values(playerInfoByID[session.user.id].selections),
-                      valueByPokemonID
-                  );
-
-                  const rulesetForPlayer =
-                      playerInfoByID[session.user.id].rules;
-                  if (currentPointTotal + value > rulesetForPlayer.maxPoints)
-                      return notifications.show({
-                          color: "red",
-                          title: "You don't have enough points",
-                          message: `${pokemon.data.name} is worth too many points!`,
-                      });
-
-                  const { error } = await supabase
-                      .from(gameSelectionTable)
-                      .insert([
-                          {
-                              game: gameInfo.id,
-                              pokemon_id: pokemon.data.id,
-                              player: session.user.id,
-                          },
-                      ]);
-                  if (error)
-                      return notifications.show({
-                          color: "red",
-                          title: "Couldn't Select Pokemon",
-                          message: `${error.message}`,
-                      });
-                  notifications.show({
-                      title: "Added your selection",
-                      message: `You have added ${pokemon.data.name} to your team`,
-                  });
-              }
-            : undefined;
+    const isCurrentDrafter = !!session && session.user.id === currentDrafter;
 
     const RulesetModal = (
         <Modal
-            opened={isRulesetOpened}
-            onClose={hideRuleset}
+            opened={isRulesetModal}
+            onClose={rulesetModalHandlers.close}
             title="Point Ruleset"
             radius="md"
             size="85%"
@@ -277,8 +159,8 @@ const Game = () => {
 
     const TradingModal = (
         <Modal
-            opened={isTradingOpened}
-            onClose={hideTrading}
+            opened={isTradingModal}
+            onClose={tradingModalHandlers.close}
             title="Trading"
             radius="md"
             size="85%"
@@ -314,11 +196,11 @@ const Game = () => {
 
     const PokemonSelector = isDraftOngoing && (
         <PokemonSearcher
-            onSelect={selectPokemon}
             search={search}
             setSearch={setSearch}
+            canSelect={isCurrentDrafter}
         >
-            <Button onClick={showRuleset}>Browse Pokemon</Button>
+            <Button onClick={rulesetModalHandlers.open}>Browse Pokemon</Button>
         </PokemonSearcher>
     );
 
@@ -366,20 +248,11 @@ const Game = () => {
                 isMinimal={prefersMinimal}
                 allowMultiple={true}
                 defaultValue={playerSelectionData.map((x) => x[0])}
-                sectionLabelTransformer={(playerID) => {
-                    const playerInfo = playerInfoByID[playerID];
-                    const playerPokemon = Object.values(playerInfo.selections);
-                    let label = playerInfo.name;
-                    if (isDraftOngoing) {
-                        const { maxPoints, maxTeamSize } = playerInfo.rules;
-                        const pointsLeft =
-                            maxPoints -
-                            getPointTotal(playerPokemon, valueByPokemonID);
-                        const teamSize = playerPokemon.length;
-                        label += ` - ${pointsLeft}/${maxPoints} Points Left - ${teamSize}/${maxTeamSize} Pokemon Chosen`;
-                    }
-                    return label;
-                }}
+                sectionLabelTransformer={getPlayerIDToLabel(
+                    playerInfoByID,
+                    valueByPokemonID,
+                    isDraftOngoing
+                )}
                 cardLabeler={(pokemon) =>
                     getPointLabel(pokemon, valueByPokemonID)
                 }
@@ -391,46 +264,49 @@ const Game = () => {
         </Stack>
     );
 
+    const PokemonFilterModal = (
+        <RootPokemonFilterModal
+            pokeFilter={pokeFilter}
+            dex={dex}
+            showFilterModal={isFilterModal}
+            filterModalHandlers={filterModalHandlers}
+        >
+            <Group justify="center" align="end">
+                <MultiSelect
+                    searchable
+                    data={Object.entries(playerInfoByID).map(([id, info]) => ({
+                        value: id,
+                        label: info.name,
+                    }))}
+                    value={shownPlayers}
+                    onChange={setShownPlayers}
+                    label="Players to Show"
+                    w="75%"
+                />
+                {Object.keys(playerInfoByID).length > shownPlayers.length ? (
+                    <Button w="20%" onClick={showAllPlayers}>
+                        Show All
+                    </Button>
+                ) : (
+                    <Button w="20%" onClick={() => setShownPlayers([])}>
+                        Show None
+                    </Button>
+                )}
+            </Group>
+        </RootPokemonFilterModal>
+    );
+
     return (
         <>
             {RulesetModal}
             {isBattling && TradingModal}
-            <PokemonFilterModal
-                pokeFilter={pokeFilter}
-                dex={dex}
-                showFilterModal={showFilterModal}
-                filterModalHandlers={filterModalHandlers}
-            >
-                <Group justify="center" align="end">
-                    <MultiSelect
-                        searchable
-                        data={Object.entries(playerInfoByID).map(
-                            ([id, info]) => ({
-                                value: id,
-                                label: info.name,
-                            })
-                        )}
-                        value={shownPlayers}
-                        onChange={setShownPlayers}
-                        label="Players to Show"
-                        w="75%"
-                    />
-                    {Object.keys(playerInfoByID).length >
-                    shownPlayers.length ? (
-                        <Button w="20%" onClick={showAllPlayers}>
-                            Show All
-                        </Button>
-                    ) : (
-                        <Button w="20%" onClick={() => setShownPlayers([])}>
-                            Show None
-                        </Button>
-                    )}
-                </Group>
-            </PokemonFilterModal>
+            {PokemonFilterModal}
             <Group right="1rem" bottom="1rem" pos="fixed" style={{ zIndex: 1 }}>
-                <Button onClick={showRuleset}>See Pokemon</Button>
+                <Button onClick={rulesetModalHandlers.open}>See Pokemon</Button>
                 <Button onClick={filterModalHandlers.open}>Filters</Button>
-                {isBattling && <Button onClick={showTrading}>Trade</Button>}
+                {isBattling && (
+                    <Button onClick={tradingModalHandlers.open}>Trade</Button>
+                )}
             </Group>
             {GameTitle}
             <Center>
@@ -453,7 +329,7 @@ const Game = () => {
                             variant="gradient"
                             component="span"
                             gradient={{ from: "pink", to: "yellow" }}
-                            onClick={showRuleset}
+                            onClick={rulesetModalHandlers.open}
                             className={classes.pointer}
                         >
                             {pointRulesetInfo.name}

@@ -4,10 +4,25 @@ import {
     fetchCurrentDrafter,
     fetchGameInfo,
     fetchGameTrades,
+    fetchGames,
     fetchPointRulesetInfo,
+    fetchProfile,
+    fetchRulesets,
 } from "./util/database";
 import { PlayerInfo } from "./types";
 import { Dex } from "@pkmn/dex";
+
+export const useProfileQuery = (userID?: string) => {
+    const query = useQuery({
+        queryKey: ["profile", userID],
+        queryFn: async () => {
+            const profile = await fetchProfile(userID!);
+            return profile;
+        },
+        enabled: !!userID,
+    });
+    return query;
+};
 
 export const useGameInfoQuery = (gameID?: string) => {
     const query = useQuery({
@@ -59,6 +74,30 @@ export const useGamePlayersQuery = (gameID?: string) => {
             return { allPlayerInfo, playerInfoByID };
         },
         enabled: !!gameID,
+    });
+    return query;
+};
+
+export const useGamesQuery = () => {
+    const query = useQuery({
+        queryKey: ["games"],
+        queryFn: async () => {
+            const games = await fetchGames();
+            return games;
+        },
+        staleTime: 6 * 60 * 60 * 1000,
+    });
+    return query;
+};
+
+export const usePointRulesetsQuery = () => {
+    const query = useQuery({
+        queryKey: ["pointRulesets"],
+        queryFn: async () => {
+            const rulesets = await fetchRulesets();
+            return rulesets;
+        },
+        staleTime: 6 * 60 * 60 * 1000,
     });
     return query;
 };
