@@ -1,7 +1,8 @@
-import { Session, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import {
     GameInfo,
     PlayerInfo,
+    PointRuleset,
     PointRulesetInfo,
     Pokemon,
     Profile,
@@ -25,13 +26,18 @@ export const fetchGameInfo = async (gameID: string) => {
     let { data, error } = await supabase
         .from(gameTable)
         .select(
-            `id, name, owner, pointRuleset:point_ruleset, createdAt:created_at, gameStage:game_stage`
+            `
+            id, name,
+            owner, pointRuleset:point_ruleset,
+            createdAt:created_at, gameStage:game_stage,
+            notes`
         )
         .eq("id", gameID)
         .single();
     if (error) throw error;
     if (!data) throw new Error("No data received!");
-    return data as GameInfo;
+    const gameInfo = data as GameInfo;
+    return gameInfo;
 };
 
 export const fetchCurrentDrafter = async (gameID: string) => {
@@ -49,16 +55,18 @@ export const fetchAllPlayerInfo = async (gameID: string) => {
         .from(gamePlayerTable)
         .select(
             `
+            id,
             game:${gameTable}(ruleset:${pointRulesetTable}(generation)),
             player (
                 id, display_name,
                 selections:${gameSelectionTable}(id, pokemonID:pokemon_id)
-            ), priority, max_points, max_team_size`
+            ), priority, max_points, max_team_size, privileges`
         )
         .eq("game", gameID)
         .eq("player.selections.game", gameID)
         .returns<
             {
+                id: string;
                 game: { ruleset: { generation: number } };
                 player: {
                     id: string;
@@ -68,15 +76,18 @@ export const fetchAllPlayerInfo = async (gameID: string) => {
                 priority: number;
                 max_points: number;
                 max_team_size: number;
+                privileges: number;
             }[]
         >();
     if (error) throw error;
     if (!data) throw new Error("No data received!");
-    const playerInfoByID = data.map((info) => {
+    const allPlayerInfo = data.map((info) => {
         return {
             id: info.player.id,
+            gamePlayerID: info.id,
             name: info.player.display_name,
             priority: info.priority,
+            privileges: info.privileges,
             rules: {
                 maxPoints: info.max_points,
                 maxTeamSize: info.max_team_size,
@@ -93,7 +104,7 @@ export const fetchAllPlayerInfo = async (gameID: string) => {
         };
     }, {});
 
-    return playerInfoByID as PlayerInfo[];
+    return allPlayerInfo as PlayerInfo[];
 };
 
 export const fetchPointRulesetInfo = async (rulesetID: string) => {
@@ -120,11 +131,12 @@ export const fetchRulesets = async () => {
     console.log("fetching point rulesets");
     let { data, error } = await supabase
         .from(pointRulesetTable)
-        .select("id, name");
+        .select(
+            "id, name, owner, generation, isPrivate:is_private, createdAt:created_at"
+        );
     if (error) throw error;
     if (!data) throw Error("No data received!");
-    const rulesets = data.map<[string, string]>((val) => [val.id, val.name]);
-    return rulesets;
+    return data as PointRuleset[];
 };
 
 export const fetchGames = async () => {

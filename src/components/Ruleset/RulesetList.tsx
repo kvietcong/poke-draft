@@ -1,7 +1,4 @@
-import { useState, useEffect } from "react";
 import classes from "@/App.module.css";
-import supabase from "@/supabase";
-
 import {
     Card,
     Center,
@@ -39,10 +36,10 @@ export const RulesetListView = () => {
                     </Text>
                 </Title>
                 <SimpleGrid>
-                    {rulesets.map(([id, rulesetName]) => (
+                    {rulesets.map(({ id, name }) => (
                         <Card key={id}>
                             <Anchor component={Link} to={`/ruleset/${id}`}>
-                                {rulesetName}
+                                {name}
                             </Anchor>
                         </Card>
                     ))}

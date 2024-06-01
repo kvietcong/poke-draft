@@ -69,13 +69,13 @@ export const getPlayerIDToLabel =
     (
         playerInfoByID: { [id: string]: PlayerInfo },
         valueByPokemonID: ValueByPokemonID,
-        isDraftOngoing: boolean
+        willShowPointInfo: boolean
     ) =>
     (playerID: string) => {
         const playerInfo = playerInfoByID[playerID];
         const playerPokemon = Object.values(playerInfo.selections);
         let label = playerInfo.name;
-        if (isDraftOngoing) {
+        if (willShowPointInfo) {
             const { maxPoints, maxTeamSize } = playerInfo.rules;
             const pointsLeft =
                 maxPoints - getPointTotal(playerPokemon, valueByPokemonID);

@@ -1,5 +1,5 @@
 import classes from "@/App.module.css";
-import { useState, useMemo, MouseEventHandler } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { Text, Group, Center, Title, Stack, Button } from "@mantine/core";
 import { Loading } from "@/components/Loading/Loading";
@@ -11,7 +11,7 @@ import {
     PokemonAccordion,
     RootPokemonFilterModal,
 } from "@/components/PokeView/View";
-import { getFirstScrollableParent } from "@/util/helpers";
+import { scrollUpOrDown } from "@/util/helpers";
 import { getPokemon, searchPokemon, smogonOnClick } from "@/util/pokemon";
 import { usePokeFilter } from "@/util/hooks";
 import { usePointRulesetQuery } from "@/queries";
@@ -98,20 +98,6 @@ export const RulesetView = ({
                       .map((x) => x[0])
                       .filter((x) => x != "0")
         );
-    };
-
-    const scrollUpOrDown: MouseEventHandler<HTMLButtonElement> = (e) => {
-        const scrollableParent =
-            getFirstScrollableParent(e.currentTarget) ??
-            window.document.documentElement;
-        const scrollTop =
-            scrollableParent.scrollTop > 100
-                ? 0
-                : scrollableParent.scrollHeight;
-        scrollableParent.scrollTo({
-            top: scrollTop,
-            behavior: "smooth",
-        });
     };
 
     return (

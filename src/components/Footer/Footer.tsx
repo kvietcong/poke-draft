@@ -3,9 +3,9 @@ import classes from "./Footer.module.css";
 import { Link } from "react-router-dom";
 
 const links = [
-    { link: "/", label: "Repo" },
+    { link: "https://github.com/kvietcong/poke-draft", label: "Repo" },
     { link: "/", label: "Privacy" },
-    { link: "/", label: "About" },
+    { link: "https://github.com/kvietcong/poke-draft", label: "About" },
 ];
 
 export const Footer = () => {
