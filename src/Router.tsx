@@ -12,6 +12,7 @@ import { RulesetPage } from "./components/Ruleset/Ruleset";
 import { NotFound } from "./components/NotFound/NotFound";
 import { GamePage } from "./components/Game/Game";
 import { GameListPage } from "./components/Game/GameList";
+import { EditGamePage } from "./components/Game/EditGame";
 
 const router = createBrowserRouter(
     createRoutesFromElements(
@@ -23,7 +24,10 @@ const router = createBrowserRouter(
             </Route>
             <Route path="/game">
                 <Route index element={<GameListPage />} />
-                <Route path=":id" element={<GamePage />}></Route>
+                <Route path=":id">
+                    <Route index element={<GamePage />} />
+                    <Route path="edit/" element={<EditGamePage />} />
+                </Route>
             </Route>
             <Route path="/account" element={<ProfilePage />} />
             <Route path="*" element={<NotFound />} />

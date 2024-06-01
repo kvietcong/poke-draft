@@ -1,3 +1,5 @@
+import { MouseEventHandler } from "react";
+
 const scrollableStyleRegex = /(auto|scroll)/;
 
 const getStyle = (el: HTMLElement, prop: string) =>
@@ -26,4 +28,16 @@ export const getLocalPreference = (key: string) => {
 
 export const setLocalPreference = (key: string, value: string) => {
     return localStorage.setItem(getLocalPreferenceKey(key), value);
+};
+
+export const scrollUpOrDown: MouseEventHandler<HTMLButtonElement> = (e) => {
+    const scrollableParent =
+        getFirstScrollableParent(e.currentTarget) ??
+        window.document.documentElement;
+    const scrollTop =
+        scrollableParent.scrollTop > 100 ? 0 : scrollableParent.scrollHeight;
+    scrollableParent.scrollTo({
+        top: scrollTop,
+        behavior: "smooth",
+    });
 };

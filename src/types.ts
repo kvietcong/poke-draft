@@ -12,17 +12,21 @@ export type PlayerInfo = {
     id: string;
     name: string;
     priority: number;
+    privileges: number;
     rules: PlayerRules;
+    gamePlayerID: string;
     selections: { [selectionID: string]: Pokemon };
 };
 
-export type PointRulesetInfo = {
+export type PointRuleset = {
     id: string;
     name: string;
     owner: string;
     generation: number;
     isPrivate: boolean;
     createdAt: string;
+};
+export type PointRulesetInfo = PointRuleset & {
     pointRules: { pokemonID: string; value: number }[];
 };
 
@@ -36,6 +40,7 @@ export type GameInfo = {
     id: string;
     name: string;
     owner: string;
+    notes: string;
     createdAt: string;
     gameStage: GameStage;
     pointRuleset: string;

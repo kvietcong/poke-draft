@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import supabase from "@/supabase";
 import {
     Button,
@@ -11,6 +11,7 @@ import {
     Title,
     Group,
     MultiSelect,
+    Box,
 } from "@mantine/core";
 import classes from "@/App.module.css";
 import { GameStage, Pokemon } from "@/types";
@@ -50,6 +51,8 @@ import {
     getPlayerIDToLabel,
 } from "./util";
 import { RulesetView } from "../Ruleset/Ruleset";
+import sanitize from "sanitize-html";
+import { scrollUpOrDown } from "@/util/helpers";
 
 const getChosenPokemonPredicate =
     (pokemonByPlayerID: { [playerID: string]: Pokemon[] }) =>
@@ -251,10 +254,12 @@ const Game = () => {
                 sectionLabelTransformer={getPlayerIDToLabel(
                     playerInfoByID,
                     valueByPokemonID,
-                    isDraftOngoing
+                    isDraftOngoing || isJoining
                 )}
-                cardLabeler={(pokemon) =>
-                    getPointLabel(pokemon, valueByPokemonID)
+                cardLabeler={
+                    isDrafting
+                        ? (pokemon) => getPointLabel(pokemon, valueByPokemonID)
+                        : undefined
                 }
                 cardOnClick={(pokemon) =>
                     smogonOnClick(pokemon, pointRulesetInfo.generation)
@@ -296,6 +301,10 @@ const Game = () => {
         </RootPokemonFilterModal>
     );
 
+    const privilegedUsers = allPlayerInfo.filter(
+        (info) => info.privileges > 0 || gameInfo.owner === info.id
+    );
+
     return (
         <>
             {RulesetModal}
@@ -307,6 +316,7 @@ const Game = () => {
                 {isBattling && (
                     <Button onClick={tradingModalHandlers.open}>Trade</Button>
                 )}
+                <Button onClick={scrollUpOrDown}>Scroll Up/Down</Button>
             </Group>
             {GameTitle}
             <Center>
@@ -335,6 +345,20 @@ const Game = () => {
                             {pointRulesetInfo.name}
                         </Text>
                     </Title>
+                    <Text>
+                        Owner:{" "}
+                        <strong>{playerInfoByID[gameInfo.owner].name}</strong>
+                    </Text>
+                    {privilegedUsers.length > 0 && (
+                        <Text>
+                            Admins:{" "}
+                            <strong>
+                                {privilegedUsers
+                                    .map((user) => user.name)
+                                    .join(", ")}
+                            </strong>
+                        </Text>
+                    )}
                     <Text>
                         Current Game Stage:{" "}
                         <strong>{GameStage[gameInfo.gameStage]}</strong>
@@ -369,6 +393,34 @@ const Game = () => {
                     ) : (
                         PlayerSelections
                     )}
+                    {gameInfo.notes && (
+                        <>
+                            <Title>Notes</Title>
+                            <Box
+                                ta="left"
+                                p="5px"
+                                style={{
+                                    border: "1px solid",
+                                    borderRadius: "8px",
+                                }}
+                                dangerouslySetInnerHTML={{
+                                    __html: sanitize(gameInfo.notes, {
+                                        allowedAttributes: false,
+                                        allowVulnerableTags: true,
+                                    }),
+                                }}
+                            />
+                        </>
+                    )}
+                    {session &&
+                        privilegedUsers.length > 0 &&
+                        privilegedUsers
+                            .map((u) => u.id)
+                            .includes(session.user.id) && (
+                            <Button component={Link} to="edit/">
+                                Edit Game
+                            </Button>
+                        )}
                 </Stack>
             </Center>
         </>
