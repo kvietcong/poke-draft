@@ -57,13 +57,11 @@ export const fetchAllPlayerInfo = async (gameID: string) => {
             `
             id,
             game:${gameTable}(ruleset:${pointRulesetTable}(generation)),
-            player (
-                id, display_name,
-                selections:${gameSelectionTable}(id, pokemonID:pokemon_id)
-            ), priority, max_points, max_team_size, privileges`
+            player(id, display_name),
+            selections:${gameSelectionTable}(id, pokemonID:pokemon_id),
+            priority, max_points, max_team_size, privileges`
         )
         .eq("game", gameID)
-        .eq("player.selections.game", gameID)
         .returns<
             {
                 id: string;
@@ -71,8 +69,8 @@ export const fetchAllPlayerInfo = async (gameID: string) => {
                 player: {
                     id: string;
                     display_name: string;
-                    selections: { id: string; pokemonID: string }[];
                 };
+                selections: { id: string; pokemonID: string }[];
                 priority: number;
                 max_points: number;
                 max_team_size: number;
@@ -92,7 +90,7 @@ export const fetchAllPlayerInfo = async (gameID: string) => {
                 maxPoints: info.max_points,
                 maxTeamSize: info.max_team_size,
             },
-            selections: info.player.selections.reduce<{
+            selections: info.selections.reduce<{
                 [selectionID: string]: Pokemon;
             }>((acc, { id, pokemonID }) => {
                 acc[id] = searchPokemon(
