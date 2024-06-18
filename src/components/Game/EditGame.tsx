@@ -323,22 +323,16 @@ const EditGame = () => {
                             <Select
                                 searchable
                                 allowDeselect={false}
-                                data={Object.entries(
-                                    pointRulesetsByID
-                                ).map(([id, info]) => ({
-                                    label: info.name,
-                                    value: id,
-                                }))}
-                                disabled={!isJoining}
-                                {...form.getInputProps(
-                                    "pointRulesetID"
+                                data={Object.entries(pointRulesetsByID).map(
+                                    ([id, info]) => ({
+                                        label: info.name,
+                                        value: id,
+                                    })
                                 )}
+                                disabled={!isJoining}
+                                {...form.getInputProps("pointRulesetID")}
                             />
-                            <Button
-                                onClick={() =>
-                                    rulesetModalHandlers.open()
-                                }
-                            >
+                            <Button onClick={() => rulesetModalHandlers.open()}>
                                 Show Ruleset
                             </Button>
                             <Title>Player Rules</Title>
@@ -393,7 +387,7 @@ export const EditGamePage = () => {
         !userID ||
         (!gamePlayersQuery.data.playerInfoByID[userID].privileges &&
             gamePlayersQuery.data.playerInfoByID[userID].id !==
-            gameInfoQuery.data.owner)
+                gameInfoQuery.data.owner)
     )
         throw new Error("You don't have the permissions to view this page");
 
