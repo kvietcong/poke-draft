@@ -117,7 +117,7 @@ export const PokemonCard = ({
     const clipboard = useClipboard({ timeout: 500 });
 
     return (
-        <Card radius="lg" withBorder w={150} mih={150} padding={20}>
+        <Card radius="lg" withBorder w="12vw" maw={150} miw={100}>
             <Image
                 src={pokemon.sprite.url}
                 style={{
@@ -149,7 +149,7 @@ export const PokemonCard = ({
                 </Text>
             </Tooltip>
             {pokemon.data.types.map((type) => (
-                <Badge key={type} m={1} w={100} color={getTypeColor(type)}>
+                <Badge key={type} m={1} w="100%" color={getTypeColor(type)}>
                     {type}
                 </Badge>
             ))}
@@ -210,24 +210,27 @@ export const PokemonPill = ({
     const secondaryColor = getTypeColor(
         pokemon.data.types[1] ?? pokemon.data.types[0]
     );
+
+    const icon = <span style={{ ...pokemon.icon }} />;
     return (
         <Badge
             className={appClasses.pointer}
             onClick={(e) => onCardClick(pokemon, e)}
-            color={primaryColor}
-            h={40}
+            gradient={{ from: primaryColor, to: secondaryColor, deg: 0 }}
+            leftSection={icon}
+            variant="gradient"
+            mih={40}
+            styles={{
+                label: { overflow: "visible" },
+                section: { marginInlineEnd: 0 },
+            }}
             style={{
-                border: "2px solid " + secondaryColor,
-                boxShadow: "0px 0px 4px 1px " + secondaryColor,
+                fontSize: "64%",
+                textShadow: "0 0 16px black",
+                boxShadow: "0 0 8px " + primaryColor,
             }}
         >
-            <Group
-                gap={0}
-                style={{ textShadow: "black 0 2px 8px", paddingRight: "5px" }}
-            >
-                <span style={{ ...pokemon.icon }} />
-                {pokemon.data.name}
-            </Group>
+            {pokemon.data.name}
         </Badge>
     );
 };
@@ -282,7 +285,7 @@ export const PokemonAccordion = ({
                         : label}
                 </Accordion.Control>
                 <Accordion.Panel>
-                    <Group justify="center" ta="center">
+                    <Group justify="center" ta="center" gap="xs">
                         {(!(open || setOpen) ||
                             open === label ||
                             open?.includes(label)) &&

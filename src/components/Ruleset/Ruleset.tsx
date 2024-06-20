@@ -129,7 +129,7 @@ export const RulesetView = ({
                 }
                 cardOnClick={cardOnClick ?? defaultCardOnClick}
             />
-            <Group pos="sticky" left={25} bottom={20}>
+            <Group pos="sticky" bottom={15} w="100%" justify="flex-end">
                 <Button onClick={toggleSections}>
                     {open.length ? "Close All" : "Open All"}
                 </Button>

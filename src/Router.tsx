@@ -1,6 +1,7 @@
 import {
     createBrowserRouter,
     createRoutesFromElements,
+    Navigate,
     Route,
     RouterProvider,
 } from "react-router-dom";
@@ -10,9 +11,9 @@ import { HomePage } from "./components/Home/Home";
 import { RulesetListPage } from "./components/Ruleset/RulesetList";
 import { RulesetPage } from "./components/Ruleset/Ruleset";
 import { NotFound } from "./components/NotFound/NotFound";
-import { GamePage } from "./components/Game/Game";
 import { GameListPage } from "./components/Game/GameList";
 import { EditGamePage } from "./components/Game/EditGame";
+import { GamePage } from "./components/Game/Game";
 
 const router = createBrowserRouter(
     createRoutesFromElements(
@@ -25,7 +26,8 @@ const router = createBrowserRouter(
             <Route path="/game">
                 <Route index element={<GameListPage />} />
                 <Route path=":id">
-                    <Route index element={<GamePage />} />
+                    <Route index element={<Navigate to="./info" />} />
+                    <Route path=":tab" element={<GamePage />} />
                     <Route path="edit/" element={<EditGamePage />} />
                 </Route>
             </Route>

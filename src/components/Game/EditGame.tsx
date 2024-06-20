@@ -214,7 +214,7 @@ const EditGame = () => {
     );
 
     const isOwnerEditing = userID === gameInfo.owner;
-    const isJoining = gameInfo.gameStage < GameStage.Battling;
+    const isJoining = gameInfo.gameStage <= GameStage.Joining;
 
     const PlayerRule = useCallback(
         ({
@@ -232,7 +232,7 @@ const EditGame = () => {
                         onClick={() =>
                             form.removeListItem("gamePlayers", index)
                         }
-                        disabled={!(!isOwner && isJoining)}
+                        disabled={isOwner || !isJoining}
                     >
                         Kick
                     </Button>
@@ -323,22 +323,16 @@ const EditGame = () => {
                             <Select
                                 searchable
                                 allowDeselect={false}
-                                data={Object.entries(
-                                    pointRulesetsByID
-                                ).map(([id, info]) => ({
-                                    label: info.name,
-                                    value: id,
-                                }))}
-                                disabled={!isJoining}
-                                {...form.getInputProps(
-                                    "pointRulesetID"
+                                data={Object.entries(pointRulesetsByID).map(
+                                    ([id, info]) => ({
+                                        label: info.name,
+                                        value: id,
+                                    })
                                 )}
+                                disabled={!isJoining}
+                                {...form.getInputProps("pointRulesetID")}
                             />
-                            <Button
-                                onClick={() =>
-                                    rulesetModalHandlers.open()
-                                }
-                            >
+                            <Button onClick={() => rulesetModalHandlers.open()}>
                                 Show Ruleset
                             </Button>
                             <Title>Player Rules</Title>
@@ -355,7 +349,14 @@ const EditGame = () => {
                                         );
                                     })}
                             </Stack>
-                            <Button onClick={() => form.reset()}>Reset</Button>
+                            <Button
+                                onClick={() => {
+                                    form.reset();
+                                    editor.commands.setContent(gameInfo.notes);
+                                }}
+                            >
+                                Reset
+                            </Button>
                             <TextEditor editor={editor} />
                             <input type="submit" />
                         </Stack>
@@ -393,7 +394,7 @@ export const EditGamePage = () => {
         !userID ||
         (!gamePlayersQuery.data.playerInfoByID[userID].privileges &&
             gamePlayersQuery.data.playerInfoByID[userID].id !==
-            gameInfoQuery.data.owner)
+                gameInfoQuery.data.owner)
     )
         throw new Error("You don't have the permissions to view this page");
 
