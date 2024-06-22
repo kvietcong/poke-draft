@@ -34,6 +34,7 @@ import {
     smogonOnClick,
 } from "@/util/pokemon";
 import { PokeFilter } from "@/util/hooks";
+import { useIsThinScreen } from "@/util/helpers";
 
 export type CardOnClick = (pokemon: Pokemon, event: React.MouseEvent) => void;
 const defaultCardOnClick = (pokemon: Pokemon) =>
@@ -212,13 +213,14 @@ export const PokemonPill = ({
     );
 
     const icon = <span style={{ ...pokemon.icon }} />;
+    const isThinScreen = useIsThinScreen();
+
     return (
         <Badge
             className={appClasses.pointer}
             onClick={(e) => onCardClick(pokemon, e)}
-            gradient={{ from: primaryColor, to: secondaryColor, deg: 0 }}
             leftSection={icon}
-            variant="gradient"
+            color={primaryColor}
             mih={40}
             styles={{
                 label: { overflow: "visible" },
@@ -227,10 +229,10 @@ export const PokemonPill = ({
             style={{
                 fontSize: "64%",
                 textShadow: "0 0 16px black",
-                boxShadow: "0 0 8px " + primaryColor,
+                boxShadow: "0 0 12px " + secondaryColor,
             }}
         >
-            {pokemon.data.name}
+            {!isThinScreen && pokemon.data.name}
         </Badge>
     );
 };
@@ -373,6 +375,9 @@ export const RootPokemonFilterModal = ({
         return { suggestions, theMoves };
     }, [dex]);
 
+    const isThinScreen = useIsThinScreen();
+    const modalSize = isThinScreen ? "100%" : "85%";
+
     return (
         <Modal
             opened={showFilterModal}
@@ -380,7 +385,7 @@ export const RootPokemonFilterModal = ({
             title="Filters"
             radius="md"
             keepMounted={true}
-            size="75%"
+            size={modalSize}
             centered
         >
             <Stack>

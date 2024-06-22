@@ -11,9 +11,11 @@ import {
 } from "@mantine/core";
 import { Link } from "react-router-dom";
 import { Loading } from "../Loading/Loading";
+import { useIsThinScreen } from "@/util/helpers";
 
 export const GameListView = () => {
     const gamesQuery = useGamesQuery();
+    const isThinScreen = useIsThinScreen();
 
     if (gamesQuery.isPending) return <Loading />;
     if (gamesQuery.isError) throw Error("Couldn't fetch games");
@@ -22,7 +24,7 @@ export const GameListView = () => {
 
     return (
         <Center>
-            <Stack>
+            <Stack w={isThinScreen ? "95%" : "80%"}>
                 <Title ta="center" className={classes.title}>
                     All{" "}
                     <Text

@@ -1,11 +1,12 @@
-import { useGameID } from "@/Context";
+import { useGameID, usePointRulesetID } from "@/Context";
 import {
     useCurrentDrafterQuery,
     useGameInfoQuery,
     useGamePlayersQuery,
+    usePointRulesetQuery,
 } from "@/queries";
 import { useSessionStore } from "@/stores";
-import { Box, Button, Group, Pill, Text, Stack } from "@mantine/core";
+import { Box, Button, Group, Pill, Text, Stack, Anchor } from "@mantine/core";
 import { Link } from "react-router-dom";
 import sanitize from "sanitize-html";
 import supabase from "@/supabase";
@@ -97,6 +98,8 @@ export const GameInfoTab = () => {
     const gameInfo = useGameInfoQuery(gameID).data!;
     const currentDrafter = useCurrentDrafterQuery(gameID).data;
     const { playerInfoByID, allPlayerInfo } = useGamePlayersQuery(gameID).data!;
+    const { pointRulesetInfo } =
+        usePointRulesetQuery(usePointRulesetID()).data!;
 
     const session = useSessionStore((state) => state.session);
 
@@ -160,6 +163,12 @@ export const GameInfoTab = () => {
             <Text>
                 Current Game Stage:{" "}
                 <strong>{GameStage[gameInfo.gameStage]}</strong>
+            </Text>
+            <Text>
+                Point Ruleset:{" "}
+                <Anchor to={`/ruleset/${pointRulesetInfo.id}`} component={Link}>
+                    {pointRulesetInfo.name}
+                </Anchor>
             </Text>
             {canUserJoin && (
                 <Button onClick={() => joinGame(gameInfo.id, session.user.id)}>

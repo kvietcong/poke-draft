@@ -41,11 +41,12 @@ import {
 } from "@mantine/core";
 import { RulesetView } from "../Ruleset/Ruleset";
 import { TradesTab } from "./TradesTab";
-import { useDisclosure, useViewportSize } from "@mantine/hooks";
+import { useDisclosure } from "@mantine/hooks";
 import { SelectionsTab } from "./SelectionsTab";
 import { GameInfoTab } from "./GameInfoTab";
 import { createPortal } from "react-dom";
 import { PokemonSelector } from "./PokemonSelector";
+import { useIsThinScreen } from "@/util/helpers";
 
 const GameTitle = () => {
     const gameID = useGameID();
@@ -145,8 +146,7 @@ const Game = () => {
     const [isNavOpen, navHandlers] = useDisclosure(false);
     const [search, setSearch] = useState("");
 
-    const { width } = useViewportSize();
-    const isThinScreen = width < 800;
+    const isThinScreen = useIsThinScreen();
 
     const extraRulePredicates = useMemo(() => {
         return [getChosenPokemonPredicate(allPlayerInfo)];
@@ -165,14 +165,16 @@ const Game = () => {
     const willLoadSelector =
         gameInfo.gameStage === GameStage.Drafting && isUserInGame;
 
+    const modalSize = isThinScreen ? "100%" : "85%";
+
     return (
-        <Stack w="80%" m="auto">
+        <Stack w={isThinScreen ? "95%" : "80%"} m="auto">
             <Modal
                 opened={isRulesetModal}
                 onClose={rulesetModalHandlers.close}
                 title="Point Ruleset"
                 radius="md"
-                size="85%"
+                size={modalSize}
                 keepMounted={true}
                 centered
             >
@@ -189,7 +191,7 @@ const Game = () => {
                     onClose={selectModalHandlers.close}
                     title="Choose a Pokemon"
                     radius="md"
-                    size="85%"
+                    size={modalSize}
                     keepMounted={true}
                     centered
                 >
