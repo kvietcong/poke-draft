@@ -214,7 +214,7 @@ const EditGame = () => {
     );
 
     const isOwnerEditing = userID === gameInfo.owner;
-    const isJoining = gameInfo.gameStage < GameStage.Battling;
+    const isJoining = gameInfo.gameStage <= GameStage.Joining;
 
     const PlayerRule = useCallback(
         ({
@@ -232,7 +232,7 @@ const EditGame = () => {
                         onClick={() =>
                             form.removeListItem("gamePlayers", index)
                         }
-                        disabled={!(!isOwner && isJoining)}
+                        disabled={isOwner || !isJoining}
                     >
                         Kick
                     </Button>
@@ -349,7 +349,14 @@ const EditGame = () => {
                                         );
                                     })}
                             </Stack>
-                            <Button onClick={() => form.reset()}>Reset</Button>
+                            <Button
+                                onClick={() => {
+                                    form.reset();
+                                    editor.commands.setContent(gameInfo.notes);
+                                }}
+                            >
+                                Reset
+                            </Button>
                             <TextEditor editor={editor} />
                             <input type="submit" />
                         </Stack>

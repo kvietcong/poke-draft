@@ -5,7 +5,6 @@ import supabase from "@/supabase";
 import {
     Anchor,
     Button,
-    Container,
     Grid,
     Image,
     Stack,
@@ -21,9 +20,12 @@ import { notifications } from "@mantine/notifications";
 import { changeUsername } from "@/util/database";
 import { usePreferenceStore, useSessionStore } from "@/stores";
 import { useProfileQuery } from "@/queries";
+import { useIsThinScreen } from "@/util/helpers";
 
 export const LoginView = () => {
     const { colorScheme } = useMantineColorScheme();
+    const isThinScreen = useIsThinScreen();
+    const w = isThinScreen ? "95%" : "85%";
     const getAutoColorScheme = () => {
         return window.matchMedia("(prefers-color-scheme: dark)").matches
             ? "dark"
@@ -31,8 +33,8 @@ export const LoginView = () => {
     };
 
     return (
-        <>
-            <Title className={classes.title} ta="center" mt={100}>
+        <Stack w={w} m="auto">
+            <Title className={classes.title} ta="center">
                 Login or Sign{" "}
                 <Text
                     inherit
@@ -43,20 +45,16 @@ export const LoginView = () => {
                     Up
                 </Text>
             </Title>
-            <Container w="50%">
-                <Auth
-                    supabaseClient={supabase}
-                    appearance={{ theme: ThemeSupa }}
-                    providers={["google", "discord", "github", "twitch"]}
-                    theme={
-                        colorScheme === "auto"
-                            ? getAutoColorScheme()
-                            : colorScheme
-                    }
-                    onlyThirdPartyProviders
-                />
-            </Container>
-        </>
+            <Auth
+                supabaseClient={supabase}
+                appearance={{ theme: ThemeSupa }}
+                providers={["google", "discord", "github", "twitch"]}
+                theme={
+                    colorScheme === "auto" ? getAutoColorScheme() : colorScheme
+                }
+                onlyThirdPartyProviders
+            />
+        </Stack>
     );
 };
 
@@ -65,6 +63,8 @@ export const MyProfileView = () => {
     const session = useSessionStore((state) => state.session);
     const profileQuery = useProfileQuery(session?.user.id);
     const [newUsername, setNewUsername] = useState("");
+    const isThinScreen = useIsThinScreen();
+    const w = isThinScreen ? "95%" : "85%";
 
     if (profileQuery.isError) throw new Error("Couldn't get profile");
 
@@ -96,8 +96,8 @@ export const MyProfileView = () => {
     };
 
     return (
-        <>
-            <Title className={classes.title} ta="center" mt={100}>
+        <Stack ta="center" m="auto" w={w}>
+            <Title className={classes.title} ta="center">
                 Hello{" "}
                 <Text
                     inherit
@@ -108,41 +108,37 @@ export const MyProfileView = () => {
                     {username}!
                 </Text>
             </Title>
-            <Container ta="center" w="50%">
-                <Grid>
-                    <Grid.Col span={9}>
-                        <TextInput
-                            placeholder="Choose your new name!"
-                            value={newUsername}
-                            onChange={(e) => setNewUsername(e.target.value)}
-                            w="100%"
-                        />
-                    </Grid.Col>
-                    <Grid.Col span={3}>
-                        <Button w="100%" onClick={changeName}>
-                            Change Name
-                        </Button>
-                    </Grid.Col>
-                </Grid>
-                <Stack>
-                    <ColorSchemeToggle />
-                    <Button onClick={togglePrefersMinimal}>
-                        Toggle Minimal Preference (Now Preferring{" "}
-                        {prefersMinimal ? "Minimal" : "Full"} View)
-                    </Button>
-                    <Button onClick={() => supabase.auth.signOut()}>
-                        Log out
-                    </Button>
-                    <Image
-                        src={
-                            session.user.user_metadata.avatar_url ||
-                            "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png"
-                        }
-                        alt="User Avatar"
+            <Grid>
+                <Grid.Col span={9}>
+                    <TextInput
+                        placeholder="Choose your new name!"
+                        value={newUsername}
+                        onChange={(e) => setNewUsername(e.target.value)}
+                        w="100%"
                     />
-                </Stack>
-            </Container>
-        </>
+                </Grid.Col>
+                <Grid.Col span={3}>
+                    <Button w="100%" onClick={changeName}>
+                        Change Name
+                    </Button>
+                </Grid.Col>
+            </Grid>
+            <Stack>
+                <ColorSchemeToggle />
+                <Button onClick={togglePrefersMinimal}>
+                    Toggle Minimal Preference (Now Preferring{" "}
+                    {prefersMinimal ? "Minimal" : "Full"} View)
+                </Button>
+                <Button onClick={() => supabase.auth.signOut()}>Log out</Button>
+                <Image
+                    src={
+                        session.user.user_metadata.avatar_url ||
+                        "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png"
+                    }
+                    alt="User Avatar"
+                />
+            </Stack>
+        </Stack>
     );
 };
 

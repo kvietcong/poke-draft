@@ -1,7 +1,16 @@
 import classes from "@/App.module.css";
 import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { Text, Group, Center, Title, Stack, Button } from "@mantine/core";
+import {
+    Text,
+    Group,
+    Center,
+    Title,
+    Stack,
+    Button,
+    Collapse,
+    Burger,
+} from "@mantine/core";
 import { Loading } from "@/components/Loading/Loading";
 import { useDisclosure } from "@mantine/hooks";
 import { Pokemon } from "@/types";
@@ -11,7 +20,7 @@ import {
     PokemonAccordion,
     RootPokemonFilterModal,
 } from "@/components/PokeView/View";
-import { scrollUpOrDown } from "@/util/helpers";
+import { scrollUpOrDown, useIsThinScreen } from "@/util/helpers";
 import { getPokemon, searchPokemon, smogonOnClick } from "@/util/pokemon";
 import { usePokeFilter } from "@/util/hooks";
 import { usePointRulesetQuery } from "@/queries";
@@ -27,6 +36,9 @@ export const RulesetView = ({
 }) => {
     const { dex, pointRulesetInfo, valueByPokemonID, pokemonIDsByValue } =
         usePointRulesetQuery(usePointRulesetID()).data!;
+
+    const [isNavOpen, navHandlers] = useDisclosure(false);
+    const isThinScreen = useIsThinScreen();
 
     const { prefersMinimal, togglePrefersMinimal } = usePreferenceStore();
 
@@ -129,27 +141,44 @@ export const RulesetView = ({
                 }
                 cardOnClick={cardOnClick ?? defaultCardOnClick}
             />
-            <Group pos="sticky" left={25} bottom={20}>
-                <Button onClick={toggleSections}>
-                    {open.length ? "Close All" : "Open All"}
-                </Button>
-                <Button onClick={scrollUpOrDown}>Scroll</Button>
-                <Button onClick={togglePrefersMinimal}>
-                    Toggle View ({prefersMinimal ? "Minimal" : "Full"})
-                </Button>
-                <Button onClick={filterModalHandlers.toggle}>Filters</Button>
+            <Group pos="sticky" bottom={15} justify="flex-end">
+                <Group
+                    display={isNavOpen || !isThinScreen ? undefined : "none"}
+                >
+                    {/* There's a bug somewhere making a Collapse not work here :( */}
+                    <Group id="ruleset-toolbar" justify="flex-end">
+                        <Button onClick={toggleSections}>
+                            {open.length ? "Close All" : "Open All"}
+                        </Button>
+                        <Button onClick={scrollUpOrDown}>Scroll</Button>
+                        <Button onClick={togglePrefersMinimal}>
+                            Toggle View ({prefersMinimal ? "Minimal" : "Full"})
+                        </Button>
+                        <Button onClick={filterModalHandlers.toggle}>
+                            Filters
+                        </Button>
+                    </Group>
+                </Group>
+                <Burger
+                    opened={isNavOpen}
+                    onClick={navHandlers.toggle}
+                    display={isThinScreen ? undefined : "none"}
+                />
             </Group>
         </Stack>
     );
 };
 
-const RulesetCentered = () => (
-    <Center>
-        <Stack w="70%">
-            <RulesetView />
-        </Stack>
-    </Center>
-);
+const RulesetCentered = () => {
+    const isThinScreen = useIsThinScreen();
+    return (
+        <Center>
+            <Stack w={isThinScreen ? "95%" : "80%"}>
+                <RulesetView />
+            </Stack>
+        </Center>
+    );
+};
 
 export const RulesetPage = () => {
     const { id } = useParams();

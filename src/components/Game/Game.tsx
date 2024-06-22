@@ -1,30 +1,16 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { Link, useParams } from "react-router-dom";
+import {
+    ReactNode,
+    memo,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
+} from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import supabase from "@/supabase";
-import {
-    Button,
-    Center,
-    Modal,
-    Grid,
-    Stack,
-    Text,
-    Title,
-    Group,
-    MultiSelect,
-    Box,
-} from "@mantine/core";
 import classes from "@/App.module.css";
-import { GameStage, Pokemon } from "@/types";
-import {
-    AccordionSectionData,
-    CardOnClick,
-    PokemonAccordion,
-    RootPokemonFilterModal,
-} from "@/components/PokeView/View";
-import { Loading } from "../Loading/Loading";
-import { useDisclosure } from "@mantine/hooks";
+import { GameStage, PlayerInfo, Pokemon } from "@/types";
 import { notifications } from "@mantine/notifications";
-import { getPointLabel, smogonOnClick } from "@/util/pokemon";
 import {
     gamePlayerTable,
     gameSelectionTable,
@@ -32,10 +18,7 @@ import {
     tradeTable,
     gameTable,
 } from "@/util/database";
-import { GameTradesAccordion, TradeCreator } from "./Trade";
 import { GameIDContext, PointRulesetIDContext, useGameID } from "@/Context";
-import { usePokeFilter } from "@/util/hooks";
-import { PokemonSearcher } from "./PokemonSearch";
 import {
     useCurrentDrafterQuery,
     useGameInfoQuery,
@@ -43,147 +26,33 @@ import {
     useGameTradesQuery,
     usePointRulesetQuery,
 } from "@/queries";
-import { usePreferenceStore, useSessionStore } from "@/stores";
+import { useSessionStore } from "@/stores";
+import { Loading } from "../Loading/Loading";
 import {
-    beginDrafting,
-    concludeDrafting,
-    joinGame,
-    getPlayerIDToLabel,
-} from "./util";
+    Button,
+    Group,
+    Tabs,
+    Text,
+    Title,
+    Stack,
+    Modal,
+    Burger,
+    Collapse,
+} from "@mantine/core";
 import { RulesetView } from "../Ruleset/Ruleset";
-import sanitize from "sanitize-html";
-import { scrollUpOrDown } from "@/util/helpers";
+import { TradesTab } from "./TradesTab";
+import { useDisclosure } from "@mantine/hooks";
+import { SelectionsTab } from "./SelectionsTab";
+import { GameInfoTab } from "./GameInfoTab";
+import { createPortal } from "react-dom";
+import { PokemonSelector } from "./PokemonSelector";
+import { useIsThinScreen } from "@/util/helpers";
 
-const getChosenPokemonPredicate =
-    (pokemonByPlayerID: { [playerID: string]: Pokemon[] }) =>
-    (pokemon: Pokemon): boolean => {
-        for (const id in pokemonByPlayerID) {
-            if (
-                pokemonByPlayerID[id]
-                    .map((p) => p.data.id)
-                    .includes(pokemon.data.id)
-            )
-                return false;
-        }
-        return true;
-    };
-
-const Game = () => {
+const GameTitle = () => {
     const gameID = useGameID();
-
-    const { prefersMinimal, togglePrefersMinimal } = usePreferenceStore();
-    const session = useSessionStore((state) => state.session);
-
-    const currentDrafter = useCurrentDrafterQuery(gameID).data!;
     const gameInfo = useGameInfoQuery(gameID).data!;
-    const { playerInfoByID, allPlayerInfo } = useGamePlayersQuery(gameID).data!;
-    const { dex, pointRulesetInfo, valueByPokemonID } = usePointRulesetQuery(
-        gameInfo.pointRuleset
-    ).data!;
 
-    const pokemonByPlayerID = useMemo(() => {
-        return allPlayerInfo.reduce<{ [playerID: string]: Pokemon[] }>(
-            (acc, next) => {
-                acc[next.id] = Object.values(next.selections);
-                return acc;
-            },
-            {}
-        );
-    }, [allPlayerInfo]);
-
-    const [isRulesetModal, rulesetModalHandlers] = useDisclosure(false);
-    const [isTradingModal, tradingModalHandlers] = useDisclosure(false);
-    const [isFilterModal, filterModalHandlers] = useDisclosure(false);
-
-    const pokeFilter = usePokeFilter(dex);
-    const [search, setSearch] = useState("");
-    const [open, setOpen] = useState<string[]>([]);
-    const [shownPlayers, setShownPlayers] = useState<string[]>([]);
-
-    const rulesetCardOnClick: CardOnClick = useCallback(
-        (pokemon) => {
-            setSearch(pokemon.data.id);
-            rulesetModalHandlers.close();
-            window.document
-                .getElementById("make-selection")
-                ?.scrollIntoView({ behavior: "smooth" });
-        },
-        [setSearch, rulesetModalHandlers]
-    );
-
-    const showAllPlayers = useCallback(
-        () => setShownPlayers(Object.keys(playerInfoByID)),
-        [playerInfoByID]
-    );
-
-    useEffect(() => {
-        showAllPlayers();
-        setOpen(
-            Object.keys(playerInfoByID).filter(
-                (id) => Object.keys(playerInfoByID[id].selections).length > 0
-            )
-        );
-    }, [playerInfoByID]);
-
-    const isJoining = gameInfo.gameStage === GameStage.Joining;
-    const isDrafting = gameInfo.gameStage === GameStage.Drafting;
-    const isBattling = gameInfo.gameStage === GameStage.Battling;
-    const isDraftOngoing = !!isDrafting && !!currentDrafter;
-    const isReadyToBattle = !!isDrafting && !currentDrafter;
-
-    const isCurrentDrafter = !!session && session.user.id === currentDrafter;
-
-    const RulesetModal = (
-        <Modal
-            opened={isRulesetModal}
-            onClose={rulesetModalHandlers.close}
-            title="Point Ruleset"
-            radius="md"
-            size="85%"
-            keepMounted={true}
-            centered
-        >
-            <RulesetView
-                cardOnClick={
-                    isDraftOngoing
-                        ? rulesetCardOnClick
-                        : (pokemon) =>
-                              smogonOnClick(
-                                  pokemon,
-                                  pointRulesetInfo.generation
-                              )
-                }
-                extraRulePredicates={[
-                    getChosenPokemonPredicate(pokemonByPlayerID),
-                ]}
-            />
-        </Modal>
-    );
-
-    const TradingModal = (
-        <Modal
-            opened={isTradingModal}
-            onClose={tradingModalHandlers.close}
-            title="Trading"
-            radius="md"
-            size="85%"
-            keepMounted={true}
-            centered
-        >
-            <Stack>
-                <Title>Game Trades</Title>
-                <GameTradesAccordion />
-                {session && session.user.id in playerInfoByID && (
-                    <>
-                        <Title>Make a Trade</Title>
-                        <TradeCreator />
-                    </>
-                )}
-            </Stack>
-        </Modal>
-    );
-
-    const GameTitle = (
+    return (
         <Title className={classes.title} ta="center">
             Game:{" "}
             <Text
@@ -196,234 +65,173 @@ const Game = () => {
             </Text>
         </Title>
     );
+};
 
-    const PokemonSelector = isDraftOngoing && (
-        <PokemonSearcher
-            search={search}
-            setSearch={setSearch}
-            canSelect={isCurrentDrafter}
-        >
-            <Button onClick={rulesetModalHandlers.open}>Browse Pokemon</Button>
-        </PokemonSearcher>
-    );
+export const InsertIntoGameToolBar = ({
+    children,
+}: {
+    children?: ReactNode;
+}) => {
+    const toolbarElement = document.getElementById("game-toolbar");
+    if (!toolbarElement) return;
+    return createPortal(children, toolbarElement);
+};
 
-    const playerSelectionData = useMemo(() => {
-        const data = Object.entries(playerInfoByID)
-            .sort(
-                (a, b) =>
-                    b[1].priority - a[1].priority ||
-                    a[1].id.localeCompare(b[1].id)
+const getChosenPokemonPredicate =
+    (allPlayerInfo: PlayerInfo[]) =>
+    (pokemon: Pokemon): boolean => {
+        for (const info of allPlayerInfo) {
+            if (
+                Object.values(info.selections)
+                    .map((p) => p.data.id)
+                    .includes(pokemon.data.id)
             )
-            .map(([playerID, playerInfo]) => {
-                const sectionInfo = [
-                    playerID,
-                    Object.values(playerInfo.selections),
-                ];
-                return sectionInfo as AccordionSectionData;
-            });
-        const doesPokemonMatch = (pokemon: Pokemon) =>
-            pokeFilter.predicates.every((predicate) => predicate(pokemon));
-        const result = data.reduce<AccordionSectionData[]>(
-            (acc, [playerID, pokemon]) => {
-                if (!shownPlayers.includes(playerID)) return acc;
-                const filteredPokemon = pokemon.filter(doesPokemonMatch);
-                acc.push([playerID, filteredPokemon]);
-                return acc;
-            },
-            []
-        );
-        return result;
-    }, [playerInfoByID, pokeFilter, shownPlayers]);
+                return false;
+        }
+        return true;
+    };
 
-    const PlayerSelections = (
-        <Stack align="center" ta="center">
-            <Title>Player Selections</Title>
-            {!isJoining && (
-                <Button onClick={togglePrefersMinimal}>
-                    Toggle Pokemon View Mode (
-                    {prefersMinimal ? "Minimal" : "Full"})
-                </Button>
-            )}
-            <PokemonAccordion
-                open={open}
-                setOpen={setOpen}
-                data={playerSelectionData}
-                isMinimal={prefersMinimal}
-                allowMultiple={true}
-                defaultValue={playerSelectionData.map((x) => x[0])}
-                sectionLabelTransformer={getPlayerIDToLabel(
-                    playerInfoByID,
-                    valueByPokemonID,
-                    isDraftOngoing || isJoining
-                )}
-                cardLabeler={
-                    isDrafting
-                        ? (pokemon) => getPointLabel(pokemon, valueByPokemonID)
-                        : undefined
-                }
-                cardOnClick={(pokemon) =>
-                    smogonOnClick(pokemon, pointRulesetInfo.generation)
-                }
-                getIsLabelDisabled={() => isJoining}
-            />
-        </Stack>
-    );
-
-    const PokemonFilterModal = (
-        <RootPokemonFilterModal
-            pokeFilter={pokeFilter}
-            dex={dex}
-            showFilterModal={isFilterModal}
-            filterModalHandlers={filterModalHandlers}
-        >
-            <Group justify="center" align="end">
-                <MultiSelect
-                    searchable
-                    data={Object.entries(playerInfoByID).map(([id, info]) => ({
-                        value: id,
-                        label: info.name,
-                    }))}
-                    value={shownPlayers}
-                    onChange={setShownPlayers}
-                    label="Players to Show"
-                    w="75%"
-                />
-                {Object.keys(playerInfoByID).length > shownPlayers.length ? (
-                    <Button w="20%" onClick={showAllPlayers}>
-                        Show All
-                    </Button>
-                ) : (
-                    <Button w="20%" onClick={() => setShownPlayers([])}>
-                        Show None
-                    </Button>
-                )}
-            </Group>
-        </RootPokemonFilterModal>
-    );
-
-    const privilegedUsers = allPlayerInfo.filter(
-        (info) => info.privileges > 0 || gameInfo.owner === info.id
-    );
+const GameTabsMemo = memo(() => {
+    const { tab } = useParams();
+    const gameID = useGameID();
+    const gameInfo = useGameInfoQuery(gameID).data!;
+    const canTrade = gameInfo.gameStage === GameStage.Battling;
+    const navigate = useNavigate();
 
     return (
-        <>
-            {RulesetModal}
-            {isBattling && TradingModal}
-            {PokemonFilterModal}
-            <Group right="1rem" bottom="1rem" pos="fixed" style={{ zIndex: 1 }}>
-                <Button onClick={rulesetModalHandlers.open}>See Pokemon</Button>
-                <Button onClick={filterModalHandlers.open}>Filters</Button>
-                {isBattling && (
-                    <Button onClick={tradingModalHandlers.open}>Trade</Button>
-                )}
-                <Button onClick={scrollUpOrDown}>Scroll Up/Down</Button>
-            </Group>
-            {GameTitle}
-            <Center>
-                <Stack justify="center" ta="center" w="80%">
-                    {isJoining &&
-                        session &&
-                        !(session.user.id in playerInfoByID) && (
-                            <Button
-                                onClick={() =>
-                                    joinGame(gameInfo.id, session.user.id)
-                                }
-                            >
-                                Join Game
-                            </Button>
-                        )}
-                    <Title order={3}>
-                        Point Ruleset:{" "}
-                        <Text
-                            inherit
-                            variant="gradient"
-                            component="span"
-                            gradient={{ from: "pink", to: "yellow" }}
-                            onClick={rulesetModalHandlers.open}
-                            className={classes.pointer}
+        <Tabs
+            value={tab}
+            styles={{ panel: { paddingTop: "15px" } }}
+            onChange={(value) => navigate(`../${value}`, { relative: "path" })}
+        >
+            <Tabs.List grow>
+                <Tabs.Tab value="info">Info</Tabs.Tab>
+                <Tabs.Tab value="selections">Selections</Tabs.Tab>
+                <Tabs.Tab disabled={!canTrade} value="trades">
+                    Trades
+                </Tabs.Tab>
+            </Tabs.List>
+
+            <Tabs.Panel value="info">
+                <GameInfoTab />
+            </Tabs.Panel>
+            <Tabs.Panel value="selections">
+                <SelectionsTab />
+            </Tabs.Panel>
+            <Tabs.Panel value="trades">
+                {canTrade ? <TradesTab /> : "Not allowed atm"}
+            </Tabs.Panel>
+        </Tabs>
+    );
+});
+
+const RulesetViewMemo = memo((props: Parameters<typeof RulesetView>[0]) => {
+    return <RulesetView {...props} />;
+});
+
+const Game = () => {
+    const { tab } = useParams();
+    if (!["info", "selections", "trades"].includes(tab!))
+        throw new Error("Not a valid game tab");
+
+    const gameID = useGameID();
+    const gameInfo = useGameInfoQuery(gameID).data!;
+    const { allPlayerInfo, playerInfoByID } = useGamePlayersQuery(gameID).data!;
+    const currentDrafter = useCurrentDrafterQuery(gameID).data;
+
+    const session = useSessionStore((state) => state.session);
+
+    const [isRulesetModal, rulesetModalHandlers] = useDisclosure(false);
+    const [isSelectModal, selectModalHandlers] = useDisclosure(false);
+    const [isNavOpen, navHandlers] = useDisclosure(false);
+    const [search, setSearch] = useState("");
+
+    const isThinScreen = useIsThinScreen();
+
+    const extraRulePredicates = useMemo(() => {
+        return [getChosenPokemonPredicate(allPlayerInfo)];
+    }, [allPlayerInfo]);
+
+    const sendPokemonToSelector = useCallback(
+        (pokemon: Pokemon) => {
+            rulesetModalHandlers.close();
+            selectModalHandlers.open();
+            setSearch(pokemon.data.id);
+        },
+        [rulesetModalHandlers.close, selectModalHandlers.open]
+    );
+
+    const isUserInGame = session && session.user.id in playerInfoByID;
+    const willLoadSelector =
+        gameInfo.gameStage === GameStage.Drafting && isUserInGame;
+
+    const modalSize = isThinScreen ? "100%" : "85%";
+
+    return (
+        <Stack w={isThinScreen ? "95%" : "80%"} m="auto">
+            <Modal
+                opened={isRulesetModal}
+                onClose={rulesetModalHandlers.close}
+                title="Point Ruleset"
+                radius="md"
+                size={modalSize}
+                keepMounted={true}
+                centered
+            >
+                <RulesetViewMemo
+                    extraRulePredicates={extraRulePredicates}
+                    cardOnClick={
+                        willLoadSelector ? sendPokemonToSelector : undefined
+                    }
+                />
+            </Modal>
+            {willLoadSelector && (
+                <Modal
+                    opened={isSelectModal}
+                    onClose={selectModalHandlers.close}
+                    title="Choose a Pokemon"
+                    radius="md"
+                    size={modalSize}
+                    keepMounted={true}
+                    centered
+                >
+                    <PokemonSelector search={search} setSearch={setSearch}>
+                        <Button
+                            onClick={() => {
+                                selectModalHandlers.close();
+                                rulesetModalHandlers.open();
+                            }}
                         >
-                            {pointRulesetInfo.name}
-                        </Text>
-                    </Title>
-                    <Text>
-                        Owner:{" "}
-                        <strong>{playerInfoByID[gameInfo.owner].name}</strong>
-                    </Text>
-                    {privilegedUsers.length > 0 && (
-                        <Text>
-                            Admins:{" "}
-                            <strong>
-                                {privilegedUsers
-                                    .map((user) => user.name)
-                                    .join(", ")}
-                            </strong>
-                        </Text>
-                    )}
-                    <Text>
-                        Current Game Stage:{" "}
-                        <strong>{GameStage[gameInfo.gameStage]}</strong>
-                    </Text>
-                    {isJoining &&
-                        gameInfo.owner === session?.user.id &&
-                        Object.keys(playerInfoByID).length > 1 && (
-                            <Button onClick={() => beginDrafting(gameInfo.id)}>
-                                Begin Drafting
-                            </Button>
-                        )}
-                    {isDrafting && currentDrafter && (
-                        <Text>
-                            <strong>
-                                {playerInfoByID[currentDrafter].name}'s
-                            </strong>{" "}
-                            Turn to Select
-                        </Text>
-                    )}
-                    {isReadyToBattle && gameInfo.owner === session?.user.id && (
-                        <Button onClick={() => concludeDrafting(gameInfo.id)}>
-                            Conclude Drafting
+                            See Other Pokemon
                         </Button>
-                    )}
-                    {PokemonSelector ? (
-                        <Grid mih="100vh">
-                            <Grid.Col span={3}>{PokemonSelector}</Grid.Col>
-                            <Grid.Col ta="right" span={9}>
-                                {PlayerSelections}
-                            </Grid.Col>
-                        </Grid>
-                    ) : (
-                        PlayerSelections
-                    )}
-                    {gameInfo.notes && (
-                        <>
-                            <Title>Notes</Title>
-                            <Box
-                                ta="left"
-                                p="5px"
-                                style={{
-                                    border: "1px solid",
-                                    borderRadius: "8px",
-                                }}
-                                dangerouslySetInnerHTML={{
-                                    __html: sanitize(gameInfo.notes, {
-                                        allowedAttributes: false,
-                                        allowVulnerableTags: true,
-                                    }),
-                                }}
-                            />
-                        </>
-                    )}
-                    {session &&
-                        privilegedUsers.length > 0 &&
-                        privilegedUsers
-                            .map((u) => u.id)
-                            .includes(session.user.id) && (
-                            <Button component={Link} to="edit/">
-                                Edit Game
+                    </PokemonSelector>
+                </Modal>
+            )}
+            <GameTitle />
+            <GameTabsMemo />
+            <Group pos="sticky" bottom={15} justify="flex-end">
+                <Collapse in={isNavOpen || !isThinScreen}>
+                    <Group id="game-toolbar" justify="flex-end">
+                        {willLoadSelector && (
+                            <Button onClick={selectModalHandlers.open}>
+                                Choose Pokemon
+                                {currentDrafter &&
+                                    currentDrafter === session.user.id &&
+                                    " (Your Turn)"}
                             </Button>
                         )}
-                </Stack>
-            </Center>
-        </>
+                        <Button onClick={rulesetModalHandlers.open}>
+                            See Pokemon
+                        </Button>
+                    </Group>
+                </Collapse>
+                <Burger
+                    opened={isNavOpen}
+                    onClick={navHandlers.toggle}
+                    display={isThinScreen ? undefined : "none"}
+                />
+            </Group>
+        </Stack>
     );
 };
 

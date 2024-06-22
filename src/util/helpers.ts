@@ -1,3 +1,4 @@
+import { useViewportSize } from "@mantine/hooks";
 import { MouseEventHandler } from "react";
 
 const scrollableStyleRegex = /(auto|scroll)/;
@@ -40,4 +41,10 @@ export const scrollUpOrDown: MouseEventHandler<HTMLButtonElement> = (e) => {
         top: scrollTop,
         behavior: "smooth",
     });
+};
+
+export const useIsThinScreen = () => {
+    const { width } = useViewportSize();
+    const isThinScreen = width < 800;
+    return isThinScreen;
 };

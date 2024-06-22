@@ -11,9 +11,11 @@ import {
 import { Link } from "react-router-dom";
 import { usePointRulesetsQuery } from "@/queries";
 import { Loading } from "../Loading/Loading";
+import { useIsThinScreen } from "@/util/helpers";
 
 export const RulesetListView = () => {
     const pointRulesetsQuery = usePointRulesetsQuery();
+    const isThinScreen = useIsThinScreen();
 
     if (pointRulesetsQuery.isPending) return <Loading />;
     if (pointRulesetsQuery.isError)
@@ -23,7 +25,7 @@ export const RulesetListView = () => {
 
     return (
         <Center>
-            <Stack>
+            <Stack w={isThinScreen ? "95%" : "80%"}>
                 <Title ta="center" className={classes.title}>
                     All Point{" "}
                     <Text

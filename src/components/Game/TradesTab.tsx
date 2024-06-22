@@ -62,7 +62,7 @@ const Accepters = ({ confirmations }: { confirmations: Participant[] }) => (
     </Text>
 );
 
-export const GameTradesAccordion = () => {
+const GameTradesAccordion = () => {
     const session = useSessionStore((state) => state.session);
     const gameID = useGameID();
     const gameTrades = useGameTradesQuery(gameID).data!;
@@ -261,7 +261,7 @@ export const GameTradesAccordion = () => {
     );
 };
 
-export const TradeCreator = () => {
+const TradeCreator = () => {
     const session = useSessionStore((state) => state.session);
     const gameID = useGameID();
     const gameInfo = useGameInfoQuery(gameID).data!;
@@ -512,6 +512,24 @@ export const TradeCreator = () => {
                 }
                 cardOnClick={onSelect}
             />
+        </Stack>
+    );
+};
+
+export const TradesTab = () => {
+    const gameID = useGameID();
+    const session = useSessionStore((state) => state.session);
+    const { playerInfoByID } = useGamePlayersQuery(gameID).data!;
+
+    return (
+        <Stack>
+            <GameTradesAccordion />
+            {session && session.user.id in playerInfoByID && (
+                <>
+                    <Title>Make a Trade</Title>
+                    <TradeCreator />
+                </>
+            )}
         </Stack>
     );
 };
